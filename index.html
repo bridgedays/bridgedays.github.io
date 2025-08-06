@@ -269,9 +269,34 @@
             border: 1px solid #ccc;
         }
         
-        .signature {
+        .github-link {
             position: absolute;
             top: 10px;
+            right: 15px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        
+        .github-link a {
+            color: #333;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 8px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid #ddd;
+        }
+        
+        .github-link a:hover {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: #007bff;
+        }
+        
+        .signature {
+            position: absolute;
+            top: 45px;
             right: 15px;
             font-size: 11px;
             color: #666;
@@ -281,6 +306,12 @@
     </style>
 </head>
 <body>
+        <div class="github-link">
+            <a href="https://github.com/bridgedays/bridgedays.github.io" target="_blank" rel="noopener">
+                <span>⭐</span>
+                <span>GitHub</span>
+            </a>
+        </div>
         <div class="signature">✨ Vibe Coded with Claude</div>
         <div class="controls">
             <div class="control-group">
