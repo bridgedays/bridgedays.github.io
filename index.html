@@ -382,6 +382,7 @@
         let holidays = [];
         let workdays = [1, 2, 3, 4, 5]; // Monday = 1, Sunday = 0
         let weekStartDay = 1; // 1 = Monday, 0 = Sunday
+        let calculateTimeout = null; // For debouncing holiday fetches
         
         // Settings management
         function saveSettings() {
@@ -452,11 +453,11 @@
                 saveSettings();
             });
             document.getElementById('subdivision').addEventListener('change', function() {
-                calculateBridgeDays();
+                debouncedCalculateBridgeDays();
                 saveSettings();
             });
             document.getElementById('year').addEventListener('change', function() {
-                calculateBridgeDays();
+                debouncedCalculateBridgeDays();
                 saveSettings();
             });
             document.getElementById('weekStartDay').addEventListener('change', function() {
@@ -481,16 +482,16 @@
                                         subdivisionSelect.value = savedSettings.subdivision;
                                     }
                                 }
-                                calculateBridgeDays();
+                                debouncedCalculateBridgeDays();
                             });
                         } else {
                             // Saved country not available, use default
-                            calculateBridgeDays();
+                            debouncedCalculateBridgeDays();
                         }
                     } else {
                         // Always ensure calendar renders, even if country/subdivision loading had issues
                         if (!document.getElementById('month-view').hasChildNodes()) {
-                            calculateBridgeDays();
+                            debouncedCalculateBridgeDays();
                         }
                     }
                 })
@@ -499,7 +500,7 @@
                     document.getElementById('error').textContent = 'Failed to load countries: ' + error.message;
                     document.getElementById('error').style.display = 'block';
                     // Still try to render calendar even on error
-                    calculateBridgeDays();
+                    debouncedCalculateBridgeDays();
                 });
         });
         
@@ -515,7 +516,22 @@
             // Recalculate if we already have data
             if (holidays.length > 0) {
                 renderCalendarAndEfficiency();
+            } else {
+                // If no holidays loaded yet, debounce the fetch
+                debouncedCalculateBridgeDays();
             }
+        }
+        
+        // Debounced version to prevent rapid-fire API calls
+        function debouncedCalculateBridgeDays(delay = 300) {
+            if (calculateTimeout) {
+                clearTimeout(calculateTimeout);
+            }
+            
+            calculateTimeout = setTimeout(() => {
+                calculateBridgeDays();
+                calculateTimeout = null;
+            }, delay);
         }
         
         async function calculateBridgeDays() {
@@ -696,7 +712,7 @@
             
             // Only calculate bridge days if this isn't being called during settings restoration
             if (!window.restoringSettings) {
-                calculateBridgeDays();
+                debouncedCalculateBridgeDays();
             }
         }
         
