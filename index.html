@@ -463,8 +463,8 @@
                 const currentYearHolidays = await fetchHolidays(country, year, null, subdivision);
                 holidays = holidays.concat(currentYearHolidays);
                 
-                // Get holidays for January of year after next
-                const nextYearHolidays = await fetchHolidays(country, year + 1, null, subdivision);
+                // Get holidays for January of next year
+                const nextYearHolidays = await fetchHolidays(country, year + 1, 1, subdivision);
                 holidays = holidays.concat(nextYearHolidays);
                 
                 // Get holidays for January of the year after that
