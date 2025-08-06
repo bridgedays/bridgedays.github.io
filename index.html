@@ -1057,19 +1057,22 @@
             const start = new Date(startDate);
             const end = new Date(endDate);
             
-            // Iterate through all days in the range
-            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                const dateStr = d.toISOString().split('T')[0];
-                const dayElements = document.querySelectorAll(`.day[data-date="${dateStr}"]`);
+            // Get all day elements with data-date attributes and check if they fall in range
+            const allDayElements = document.querySelectorAll('.day[data-date]');
+            
+            allDayElements.forEach(dayEl => {
+                const dateStr = dayEl.dataset.date;
+                const dayDate = new Date(dateStr);
                 
-                dayElements.forEach(dayEl => {
+                // Check if this day falls within the range (inclusive)
+                if (dayDate >= start && dayDate <= end) {
                     if (highlight) {
                         dayEl.classList.add('highlighted');
                     } else {
                         dayEl.classList.remove('highlighted');
                     }
-                });
-            }
+                }
+            });
         }
         
         function scrollToBridgeOpportunity(clickedDate) {
