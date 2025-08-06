@@ -802,8 +802,33 @@
         function findBridgeOpportunities() {
             const opportunities = [];
             
-            // Group holidays by week
-            const holidaysByWeek = new Map();
+            // Find all weeks with holidays and group consecutive weeks
+            const holidayWeeks = findHolidayWeeks();
+            const consecutiveWeekGroups = groupConsecutiveWeeks(holidayWeeks);
+            
+            // Process each group of consecutive weeks with holidays
+            consecutiveWeekGroups.forEach(weekGroup => {
+                const chunks = findWorkdayChunks(weekGroup);
+                const combinations = generateChunkCombinations(chunks);
+                
+                combinations.forEach(combination => {
+                    const opportunity = calculateOpportunityForCombination(combination, weekGroup);
+                    if (opportunity && opportunity.efficiency > 1.2) {
+                        opportunities.push(opportunity);
+                    }
+                });
+            });
+            
+            // Remove duplicates and sort by efficiency
+            const uniqueOpportunities = opportunities.filter((opp, index, self) => 
+                index === self.findIndex(o => o.startDate === opp.startDate && o.endDate === opp.endDate)
+            );
+            
+            return uniqueOpportunities.sort((a, b) => b.efficiency - a.efficiency);
+        }
+        
+        function findHolidayWeeks() {
+            const holidayWeeks = new Map();
             
             holidays.forEach(holiday => {
                 const holidayDate = holiday.startDate || holiday.date;
@@ -815,8 +840,11 @@
                 monday.setDate(date.getDate() - ((date.getDay() + 6) % 7));
                 const weekKey = monday.toISOString().split('T')[0];
                 
-                if (!holidaysByWeek.has(weekKey)) {
-                    holidaysByWeek.set(weekKey, []);
+                if (!holidayWeeks.has(weekKey)) {
+                    holidayWeeks.set(weekKey, {
+                        monday: new Date(monday),
+                        holidays: []
+                    });
                 }
                 
                 // Extract holiday name
@@ -829,132 +857,182 @@
                     holidayName = holiday.name;
                 }
                 
-                holidaysByWeek.get(weekKey).push({
+                holidayWeeks.get(weekKey).holidays.push({
                     date: new Date(holidayDate),
                     name: holidayName
                 });
             });
             
-            // Process each week with holidays
-            holidaysByWeek.forEach((weekHolidays, weekStart) => {
-                const mondayDate = new Date(weekStart);
-                
-                // Find all consecutive blocks of workdays in this week
-                const workdayBlocks = findConsecutiveWorkdayBlocks(mondayDate);
-                
-                workdayBlocks.forEach(block => {
-                    // Calculate efficiency for taking this block off
-                    const blockStart = block.start;
-                    const blockEnd = block.end;
-                    
-                    // Count vacation days needed (workdays in the block)
-                    const vacationDays = block.days.length;
-                    
-                    // Calculate total days off (including weekends and holidays in the period)
-                    const totalDays = calculateTotalDaysOff(blockStart, blockEnd, weekHolidays);
-                    
-                    if (vacationDays > 0 && totalDays > vacationDays) {
-                        const efficiency = totalDays / vacationDays;
-                        
-                        // Create opportunity name
-                        const holidayNames = weekHolidays.map(h => h.name).join(' + ');
-                        const name = `${holidayNames} Bridge (${getDayNames(block.days)})`;
-                        
-                        opportunities.push({
-                            name: name,
-                            startDate: formatDate(blockStart),
-                            endDate: formatDate(blockEnd),
-                            vacationDays: vacationDays,
-                            totalDays: totalDays,
-                            efficiency: efficiency
-                        });
-                    }
-                });
-            });
-            
-            // Remove duplicates and sort by efficiency
-            const uniqueOpportunities = opportunities.filter((opp, index, self) => 
-                index === self.findIndex(o => o.startDate === opp.startDate && o.endDate === opp.endDate)
-            );
-            
-            return uniqueOpportunities
-                .filter(opp => opp.efficiency > 1.2) // Only show opportunities with good efficiency
-                .sort((a, b) => b.efficiency - a.efficiency);
+            return holidayWeeks;
         }
         
-        function findConsecutiveWorkdayBlocks(mondayDate) {
-            const blocks = [];
-            const week = [];
+        function groupConsecutiveWeeks(holidayWeeks) {
+            const sortedWeeks = Array.from(holidayWeeks.entries())
+                .sort(([a], [b]) => new Date(a) - new Date(b));
             
-            // Generate the 7 days of the week starting from Monday
-            for (let i = 0; i < 7; i++) {
-                const day = new Date(mondayDate);
-                day.setDate(mondayDate.getDate() + i);
-                week.push({
-                    date: day,
-                    isWorkday: workdays.includes(day.getDay())
-                });
-            }
+            const groups = [];
+            let currentGroup = [];
             
-            // Find consecutive sequences of workdays
-            let currentBlock = [];
-            
-            week.forEach((day, index) => {
-                if (day.isWorkday) {
-                    currentBlock.push(day);
+            sortedWeeks.forEach(([weekKey, weekData]) => {
+                const monday = new Date(weekKey);
+                
+                if (currentGroup.length === 0) {
+                    currentGroup.push(weekData);
                 } else {
-                    if (currentBlock.length > 0) {
-                        blocks.push({
-                            start: new Date(currentBlock[0].date),
-                            end: new Date(currentBlock[currentBlock.length - 1].date),
-                            days: [...currentBlock]
-                        });
-                        currentBlock = [];
+                    const lastWeek = currentGroup[currentGroup.length - 1];
+                    const lastMonday = lastWeek.monday;
+                    const daysDiff = (monday - lastMonday) / (24 * 60 * 60 * 1000);
+                    
+                    if (daysDiff === 7) {
+                        // Consecutive week
+                        currentGroup.push(weekData);
+                    } else {
+                        // Gap found, start new group
+                        groups.push(currentGroup);
+                        currentGroup = [weekData];
                     }
                 }
             });
             
-            // Don't forget the last block if it extends to the end of the week
-            if (currentBlock.length > 0) {
-                blocks.push({
-                    start: new Date(currentBlock[0].date),
-                    end: new Date(currentBlock[currentBlock.length - 1].date),
-                    days: [...currentBlock]
-                });
+            if (currentGroup.length > 0) {
+                groups.push(currentGroup);
             }
             
-            return blocks;
+            return groups;
         }
         
-        function calculateTotalDaysOff(startDate, endDate, weekHolidays) {
-            let totalDays = 0;
-            const current = new Date(startDate);
+        function findWorkdayChunks(weekGroup) {
+            // Create a map of all holidays in the group
+            const holidayDates = new Set();
+            weekGroup.forEach(week => {
+                week.holidays.forEach(holiday => {
+                    holidayDates.add(holiday.date.toISOString().split('T')[0]);
+                });
+            });
             
-            while (current <= endDate) {
-                totalDays++;
-                current.setDate(current.getDate() + 1);
+            // Get date range for the entire group
+            const startMonday = weekGroup[0].monday;
+            const endSunday = new Date(weekGroup[weekGroup.length - 1].monday);
+            endSunday.setDate(endSunday.getDate() + 6);
+            
+            const chunks = [];
+            let currentChunk = [];
+            
+            // Iterate through all days in the range
+            for (let date = new Date(startMonday); date <= endSunday; date.setDate(date.getDate() + 1)) {
+                const dateStr = date.toISOString().split('T')[0];
+                const isWorkday = workdays.includes(date.getDay());
+                const isHoliday = holidayDates.has(dateStr);
+                
+                if (isWorkday && !isHoliday) {
+                    // This is a workday we could take off
+                    currentChunk.push(new Date(date));
+                } else {
+                    // End current chunk if it has days
+                    if (currentChunk.length > 0) {
+                        chunks.push([...currentChunk]);
+                        currentChunk = [];
+                    }
+                }
             }
             
-            // Add adjacent weekends and holidays
+            // Don't forget the last chunk
+            if (currentChunk.length > 0) {
+                chunks.push(currentChunk);
+            }
+            
+            return chunks;
+        }
+        
+        function generateChunkCombinations(chunks) {
+            const combinations = [];
+            
+            // Generate all consecutive combinations of chunks
+            for (let start = 0; start < chunks.length; start++) {
+                for (let end = start; end < chunks.length; end++) {
+                    const combination = [];
+                    for (let i = start; i <= end; i++) {
+                        combination.push(...chunks[i]);
+                    }
+                    if (combination.length > 0) {
+                        combinations.push(combination.sort((a, b) => a - b));
+                    }
+                }
+            }
+            
+            return combinations;
+        }
+        
+        function calculateOpportunityForCombination(vacationDays, weekGroup) {
+            if (vacationDays.length === 0) return null;
+            
+            const startDate = new Date(Math.min(...vacationDays));
+            const endDate = new Date(Math.max(...vacationDays));
+            
+            // Calculate total days off including surrounding weekends and holidays
+            const totalDays = calculateExtendedDaysOff(startDate, endDate, weekGroup);
+            const efficiency = totalDays / vacationDays.length;
+            
+            // Create opportunity name from holidays in the week group
+            const allHolidays = [];
+            weekGroup.forEach(week => {
+                allHolidays.push(...week.holidays.map(h => h.name));
+            });
+            const holidayNames = [...new Set(allHolidays)].join(' + ');
+            
+            return {
+                name: `${holidayNames} Bridge (${formatDateRange(startDate, endDate)})`,
+                startDate: formatDate(startDate),
+                endDate: formatDate(endDate),
+                vacationDays: vacationDays.length,
+                totalDays: totalDays,
+                efficiency: efficiency
+            };
+        }
+        
+        function calculateExtendedDaysOff(startDate, endDate, weekGroup) {
+            // Get all holiday dates in the week group
+            const holidayDates = new Set();
+            weekGroup.forEach(week => {
+                week.holidays.forEach(holiday => {
+                    holidayDates.add(holiday.date.toISOString().split('T')[0]);
+                });
+            });
+            
+            // Extend the range to include adjacent non-workdays
             const extendedStart = new Date(startDate);
             const extendedEnd = new Date(endDate);
             
-            // Extend backwards through non-workdays
+            // Extend backwards
             extendedStart.setDate(extendedStart.getDate() - 1);
-            while (!workdays.includes(extendedStart.getDay()) || isHoliday(extendedStart)) {
-                totalDays++;
+            while (extendedStart <= endDate && (!workdays.includes(extendedStart.getDay()) || 
+                   holidayDates.has(extendedStart.toISOString().split('T')[0]))) {
                 extendedStart.setDate(extendedStart.getDate() - 1);
             }
+            extendedStart.setDate(extendedStart.getDate() + 1);
             
-            // Extend forwards through non-workdays
+            // Extend forwards
             extendedEnd.setDate(extendedEnd.getDate() + 1);
-            while (!workdays.includes(extendedEnd.getDay()) || isHoliday(extendedEnd)) {
-                totalDays++;
+            while (extendedEnd >= startDate && (!workdays.includes(extendedEnd.getDay()) || 
+                   holidayDates.has(extendedEnd.toISOString().split('T')[0]))) {
                 extendedEnd.setDate(extendedEnd.getDate() + 1);
             }
+            extendedEnd.setDate(extendedEnd.getDate() - 1);
             
+            // Count total days in the extended range
+            const totalDays = Math.floor((extendedEnd - extendedStart) / (24 * 60 * 60 * 1000)) + 1;
             return totalDays;
         }
+        
+        function formatDateRange(startDate, endDate) {
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            if (startDate.toDateString() === endDate.toDateString()) {
+                return dayNames[startDate.getDay()];
+            } else {
+                return `${dayNames[startDate.getDay()]}-${dayNames[endDate.getDay()]}`;
+            }
+        }
+        
         
         function isHoliday(date) {
             const dateStr = date.toISOString().split('T')[0];
@@ -964,116 +1042,6 @@
             });
         }
         
-        function getDayNames(days) {
-            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            return days.map(day => dayNames[day.date.getDay()]).join('-');
-        }
-        
-        function findBridgesAroundDate(holidayDate, holidayName) {
-            const bridges = [];
-            
-            // Check for weekend bridges (extending weekends)
-            const dayOfWeek = holidayDate.getDay();
-            
-            // If holiday is on Monday or Friday, check for weekend extension
-            if (dayOfWeek === 1) { // Monday
-                bridges.push(...checkWeekendExtension(holidayDate, holidayName, 'before'));
-            }
-            if (dayOfWeek === 5) { // Friday
-                bridges.push(...checkWeekendExtension(holidayDate, holidayName, 'after'));
-            }
-            
-            // Check for mid-week bridges
-            if (dayOfWeek >= 2 && dayOfWeek <= 4) { // Tuesday, Wednesday, Thursday
-                bridges.push(...checkMidWeekBridge(holidayDate, holidayName));
-            }
-            
-            return bridges;
-        }
-        
-        function checkWeekendExtension(holidayDate, holidayName, direction) {
-            const bridges = [];
-            const startDate = new Date(holidayDate);
-            const endDate = new Date(holidayDate);
-            
-            if (direction === 'before') {
-                // Extend to previous Friday
-                startDate.setDate(startDate.getDate() - 3);
-                const vacationDays = countWorkdaysBetween(startDate, new Date(holidayDate.getTime() - 24*60*60*1000));
-                const totalDays = Math.floor((holidayDate - startDate) / (24*60*60*1000)) + 1;
-                
-                if (vacationDays > 0) {
-                    bridges.push({
-                        name: `${holidayName} Weekend Extension`,
-                        startDate: formatDate(startDate),
-                        endDate: formatDate(holidayDate),
-                        vacationDays,
-                        totalDays,
-                        efficiency: totalDays / vacationDays
-                    });
-                }
-            } else {
-                // Extend to following Monday
-                endDate.setDate(endDate.getDate() + 3);
-                const vacationDays = countWorkdaysBetween(new Date(holidayDate.getTime() + 24*60*60*1000), endDate);
-                const totalDays = Math.floor((endDate - holidayDate) / (24*60*60*1000)) + 1;
-                
-                if (vacationDays > 0) {
-                    bridges.push({
-                        name: `${holidayName} Weekend Extension`,
-                        startDate: formatDate(holidayDate),
-                        endDate: formatDate(endDate),
-                        vacationDays,
-                        totalDays,
-                        efficiency: totalDays / vacationDays
-                    });
-                }
-            }
-            
-            return bridges;
-        }
-        
-        function checkMidWeekBridge(holidayDate, holidayName) {
-            const bridges = [];
-            
-            // Try bridging to the weekend
-            const endDate = new Date(holidayDate);
-            // Find next non-workday
-            while (workdays.includes(endDate.getDay())) {
-                endDate.setDate(endDate.getDate() + 1);
-            }
-            endDate.setDate(endDate.getDate() - 1); // Back to last workday
-            
-            const vacationDays = countWorkdaysBetween(new Date(holidayDate.getTime() + 24*60*60*1000), endDate);
-            const totalDays = Math.floor((endDate - holidayDate) / (24*60*60*1000)) + 1;
-            
-            if (vacationDays > 0 && vacationDays <= 3) {
-                bridges.push({
-                    name: `${holidayName} to Weekend Bridge`,
-                    startDate: formatDate(holidayDate),
-                    endDate: formatDate(endDate),
-                    vacationDays,
-                    totalDays,
-                    efficiency: totalDays / vacationDays
-                });
-            }
-            
-            return bridges;
-        }
-        
-        function countWorkdaysBetween(startDate, endDate) {
-            let count = 0;
-            const current = new Date(startDate);
-            
-            while (current <= endDate) {
-                if (workdays.includes(current.getDay())) {
-                    count++;
-                }
-                current.setDate(current.getDate() + 1);
-            }
-            
-            return count;
-        }
         
         function formatDate(date) {
             return date.toISOString().split('T')[0];
