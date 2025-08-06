@@ -184,6 +184,28 @@
             flex-wrap: wrap;
         }
         
+        .section-header {
+            width: 100%;
+            font-weight: bold;
+            font-size: 16px;
+            color: #333;
+            margin: 15px 0 10px 0;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #007bff;
+        }
+        
+        .section-header:first-child {
+            margin-top: 0;
+        }
+        
+        .past-opportunity {
+            opacity: 0.7;
+        }
+        
+        .past-opportunity:hover {
+            opacity: 1;
+        }
+        
         .efficiency-item {
             background: #e9ecef;
             padding: 10px;
@@ -937,51 +959,91 @@
             
             efficiencyItems.innerHTML = '';
             
-            bridgeOpportunities.forEach(opportunity => {
-                const item = document.createElement('div');
-                item.className = 'efficiency-item';
+            // Split opportunities into upcoming and past
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const upcomingOpportunities = bridgeOpportunities.filter(opp => 
+                new Date(opp.startDate) >= today
+            ).sort((a, b) => b.efficiency - a.efficiency);
+            
+            const pastOpportunities = bridgeOpportunities.filter(opp => 
+                new Date(opp.startDate) < today
+            ).sort((a, b) => b.efficiency - a.efficiency);
+            
+            // Add upcoming opportunities section
+            if (upcomingOpportunities.length > 0) {
+                const upcomingHeader = document.createElement('div');
+                upcomingHeader.className = 'section-header';
+                upcomingHeader.textContent = 'Upcoming Opportunities';
+                efficiencyItems.appendChild(upcomingHeader);
                 
-                if (opportunity.efficiency >= 3) {
-                    item.classList.add('efficiency-excellent');
-                } else if (opportunity.efficiency >= 2) {
-                    item.classList.add('efficiency-good');
-                }
-                
-                const description = document.createElement('div');
-                description.className = 'efficiency-description';
-                const startDate = new Date(opportunity.startDate);
-                const endDate = new Date(opportunity.endDate);
-                description.innerHTML = `
-                    <strong>${opportunity.name}</strong><br>
-                    ${formatDateRangeForTitle(startDate, endDate)} (${formatDateRange(startDate, endDate)})<br>
-                    <small>Take ${opportunity.vacationDays} vacation days, get ${opportunity.totalDays} days off</small>
-                `;
-                
-                const ratio = document.createElement('div');
-                ratio.className = 'efficiency-ratio';
-                ratio.innerHTML = `
-                    <div class="ratio-numerator">${opportunity.vacationDays}</div>
-                    <div class="ratio-denominator">${opportunity.totalDays}</div>
-                `;
-                
-                // Add hover handlers for highlighting
-                item.addEventListener('mouseenter', function() {
-                    highlightBridgeDays(opportunity.startDate, opportunity.endDate, true);
+                upcomingOpportunities.forEach(opportunity => {
+                    const item = createOpportunityItem(opportunity);
+                    efficiencyItems.appendChild(item);
                 });
+            }
+            
+            // Add past opportunities section
+            if (pastOpportunities.length > 0) {
+                const pastHeader = document.createElement('div');
+                pastHeader.className = 'section-header';
+                pastHeader.textContent = 'Past Opportunities';
+                efficiencyItems.appendChild(pastHeader);
                 
-                item.addEventListener('mouseleave', function() {
-                    highlightBridgeDays(opportunity.startDate, opportunity.endDate, false);
+                pastOpportunities.forEach(opportunity => {
+                    const item = createOpportunityItem(opportunity);
+                    item.classList.add('past-opportunity');
+                    efficiencyItems.appendChild(item);
                 });
-                
-                // Add unique ID for scrolling
-                item.id = `bridge-opportunity-${opportunity.startDate}-${opportunity.endDate}`;
-                
-                item.appendChild(description);
-                item.appendChild(ratio);
-                efficiencyItems.appendChild(item);
-            });
+            }
             
             efficiencyList.style.display = 'block';
+        }
+        
+        function createOpportunityItem(opportunity) {
+            const item = document.createElement('div');
+            item.className = 'efficiency-item';
+            
+            if (opportunity.efficiency >= 3) {
+                item.classList.add('efficiency-excellent');
+            } else if (opportunity.efficiency >= 2) {
+                item.classList.add('efficiency-good');
+            }
+            
+            const description = document.createElement('div');
+            description.className = 'efficiency-description';
+            const startDate = new Date(opportunity.startDate);
+            const endDate = new Date(opportunity.endDate);
+            description.innerHTML = `
+                <strong>${opportunity.name}</strong><br>
+                ${formatDateRangeForTitle(startDate, endDate)} (${formatDateRange(startDate, endDate)})<br>
+                <small>Take ${opportunity.vacationDays} vacation days, get ${opportunity.totalDays} days off</small>
+            `;
+            
+            const ratio = document.createElement('div');
+            ratio.className = 'efficiency-ratio';
+            ratio.innerHTML = `
+                <div class="ratio-numerator">${opportunity.vacationDays}</div>
+                <div class="ratio-denominator">${opportunity.totalDays}</div>
+            `;
+            
+            // Add hover handlers for highlighting
+            item.addEventListener('mouseenter', function() {
+                highlightBridgeDays(opportunity.startDate, opportunity.endDate, true);
+            });
+            
+            item.addEventListener('mouseleave', function() {
+                highlightBridgeDays(opportunity.startDate, opportunity.endDate, false);
+            });
+            
+            // Add unique ID for scrolling
+            item.id = `bridge-opportunity-${opportunity.startDate}-${opportunity.endDate}`;
+            
+            item.appendChild(description);
+            item.appendChild(ratio);
+            
+            return item;
         }
         
         function findBridgeOpportunities() {
