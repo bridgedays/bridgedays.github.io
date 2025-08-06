@@ -332,7 +332,6 @@
             
             // Load countries and initial calculation
             loadCountries()
-                .then(() => calculateBridgeDays())
                 .catch(error => {
                     console.error('Failed to load countries:', error);
                     document.getElementById('error').textContent = 'Failed to load countries: ' + error.message;
@@ -469,7 +468,9 @@
             const subdivisionSelect = document.getElementById('subdivision');
             
             if (!countryCode) {
-                subdivisionSelect.style.display = 'none';
+                subdivisionSelect.innerHTML = '<option value="">All regions</option>';
+                subdivisionSelect.disabled = true;
+                subdivisionSelect.style.display = 'inline-block';
                 return;
             }
             
@@ -484,7 +485,9 @@
                 
                 const response = await fetch(url);
                 if (!response.ok) {
-                    subdivisionSelect.style.display = 'none';
+                    subdivisionSelect.innerHTML = '<option value="">All regions</option>';
+                    subdivisionSelect.disabled = true;
+                    subdivisionSelect.style.display = 'inline-block';
                     return;
                 }
                 
@@ -492,9 +495,13 @@
                 console.log('Loaded subdivisions:', subdivisions); // Debug log
                 
                 if (subdivisions.length === 0) {
-                    subdivisionSelect.style.display = 'none';
+                    subdivisionSelect.innerHTML = '<option value="">All regions</option>';
+                    subdivisionSelect.disabled = true;
+                    subdivisionSelect.style.display = 'inline-block';
                     return;
                 }
+                
+                subdivisionSelect.disabled = false;
                 
                 subdivisionSelect.innerHTML = '<option value="">All regions</option>';
                 
@@ -518,13 +525,13 @@
                 
             } catch (error) {
                 console.warn('Could not load subdivisions:', error);
-                subdivisionSelect.style.display = 'none';
+                subdivisionSelect.innerHTML = '<option value="">All regions</option>';
+                subdivisionSelect.disabled = true;
+                subdivisionSelect.style.display = 'inline-block';
             }
             
-            // Recalculate if we already have data
-            if (holidays.length > 0) {
-                calculateBridgeDays();
-            }
+            // Always calculate bridge days when country changes
+            calculateBridgeDays();
         }
         
         async function fetchHolidays(country, year, month = null, subdivision = null) {
