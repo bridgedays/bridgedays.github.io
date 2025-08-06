@@ -446,6 +446,23 @@
         let weekStartDay = 1; // 1 = Monday, 0 = Sunday
         let calculateTimeout = null; // For debouncing holiday fetches
         
+        // Date helper functions to avoid timezone bugs
+        function dateToString(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        function stringToDate(dateString) {
+            const [year, month, day] = dateString.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+        
+        function createDate(year, month, day) {
+            return new Date(year, month, day);
+        }
+        
         // Settings management
         function saveSettings() {
             const settings = {
@@ -818,7 +835,7 @@
                 const endDate = new Date(opportunity.endDate);
                 
                 for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-                    bridgeDays.add(d.toISOString().split('T')[0]);
+                    bridgeDays.add(dateToString(d));
                 }
             });
             
@@ -904,9 +921,7 @@
                 }
                 
                 // Check if it's a holiday
-                const dateStr = currentDate.getFullYear() + '-' + 
-                    String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + 
-                    String(currentDate.getDate()).padStart(2, '0');
+                const dateStr = dateToString(currentDate);
                 const holiday = holidays.find(h => {
                     // Handle different possible date formats from API
                     const holidayDate = h.startDate || h.date;
@@ -1084,7 +1099,7 @@
                 const holidayDate = holiday.startDate || holiday.date;
                 if (!holidayDate) return;
                 
-                const date = new Date(holidayDate);
+                const date = stringToDate(holidayDate);
                 
                 // Only consider this holiday if it falls on a workday
                 if (!workdays.includes(date.getDay())) {
@@ -1094,7 +1109,7 @@
                 // Get Monday of the week containing this holiday
                 const monday = new Date(date);
                 monday.setDate(date.getDate() - ((date.getDay() + 6) % 7));
-                const weekKey = monday.toISOString().split('T')[0];
+                const weekKey = dateToString(monday);
                 
                 if (!holidayWeeks.has(weekKey)) {
                     holidayWeeks.set(weekKey, {
@@ -1114,7 +1129,7 @@
                 }
                 
                 holidayWeeks.get(weekKey).holidays.push({
-                    date: new Date(holidayDate),
+                    date: stringToDate(holidayDate),
                     name: holidayName
                 });
             });
@@ -1162,7 +1177,7 @@
             const holidayDates = new Set();
             weekGroup.forEach(week => {
                 week.holidays.forEach(holiday => {
-                    holidayDates.add(holiday.date.toISOString().split('T')[0]);
+                    holidayDates.add(dateToString(holiday.date));
                 });
             });
             
@@ -1176,7 +1191,7 @@
             
             // Iterate through all days in the range
             for (let date = new Date(startMonday); date <= endSunday; date.setDate(date.getDate() + 1)) {
-                const dateStr = date.toISOString().split('T')[0];
+                const dateStr = dateToString(date);
                 const isWorkday = workdays.includes(date.getDay());
                 const isHoliday = holidayDates.has(dateStr);
                 
@@ -1244,8 +1259,8 @@
             
             return {
                 name: holidayNames,
-                startDate: formatDate(startDate),
-                endDate: formatDate(endDate),
+                startDate: dateToString(startDate),
+                endDate: dateToString(endDate),
                 vacationDays: vacationDays.length,
                 totalDays: totalDays,
                 efficiency: efficiency
@@ -1257,7 +1272,7 @@
             const holidayDates = new Set();
             weekGroup.forEach(week => {
                 week.holidays.forEach(holiday => {
-                    holidayDates.add(holiday.date.toISOString().split('T')[0]);
+                    holidayDates.add(dateToString(holiday.date));
                 });
             });
             
@@ -1268,7 +1283,7 @@
             // Extend backwards
             extendedStart.setDate(extendedStart.getDate() - 1);
             while (extendedStart <= endDate && (!workdays.includes(extendedStart.getDay()) || 
-                   holidayDates.has(extendedStart.toISOString().split('T')[0]))) {
+                   holidayDates.has(dateToString(extendedStart)))) {
                 extendedStart.setDate(extendedStart.getDate() - 1);
             }
             extendedStart.setDate(extendedStart.getDate() + 1);
@@ -1276,7 +1291,7 @@
             // Extend forwards
             extendedEnd.setDate(extendedEnd.getDate() + 1);
             while (extendedEnd >= startDate && (!workdays.includes(extendedEnd.getDay()) || 
-                   holidayDates.has(extendedEnd.toISOString().split('T')[0]))) {
+                   holidayDates.has(dateToString(extendedEnd)))) {
                 extendedEnd.setDate(extendedEnd.getDate() + 1);
             }
             extendedEnd.setDate(extendedEnd.getDate() - 1);
@@ -1317,7 +1332,7 @@
         
         
         function isHoliday(date) {
-            const dateStr = date.toISOString().split('T')[0];
+            const dateStr = dateToString(date);
             return holidays.some(h => {
                 const holidayDate = h.startDate || h.date;
                 return holidayDate === dateStr;
@@ -1326,15 +1341,13 @@
         
         
         function formatDate(date) {
-            return date.toISOString().split('T')[0];
+            return dateToString(date);
         }
         
         function highlightBridgeDays(startDate, endDate, highlight) {
-            // Parse date strings and create local dates to match calendar day creation
-            const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
-            const start = new Date(startYear, startMonth - 1, startDay);
-            const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
-            const end = new Date(endYear, endMonth - 1, endDay);
+            // Parse date strings using our helper function
+            const start = stringToDate(startDate);
+            const end = stringToDate(endDate);
             
             if (!highlight) {
                 // Remove all highlight classes
@@ -1361,7 +1374,7 @@
             // Extend backwards
             extendedStart.setDate(extendedStart.getDate() - 1);
             while (extendedStart <= end && (!workdays.includes(extendedStart.getDay()) || 
-                   holidayDates.has(extendedStart.toISOString().split('T')[0]))) {
+                   holidayDates.has(dateToString(extendedStart)))) {
                 extendedStart.setDate(extendedStart.getDate() - 1);
             }
             extendedStart.setDate(extendedStart.getDate() + 1);
@@ -1369,7 +1382,7 @@
             // Extend forwards
             extendedEnd.setDate(extendedEnd.getDate() + 1);
             while (extendedEnd >= start && (!workdays.includes(extendedEnd.getDay()) || 
-                   holidayDates.has(extendedEnd.toISOString().split('T')[0]))) {
+                   holidayDates.has(dateToString(extendedEnd)))) {
                 extendedEnd.setDate(extendedEnd.getDate() + 1);
             }
             extendedEnd.setDate(extendedEnd.getDate() - 1);
@@ -1388,7 +1401,7 @@
                 const dayNumber = parseInt(dayEl.textContent);
                 
                 const dayDate = new Date(parseInt(year), monthIndex, dayNumber);
-                const dateStr = dayDate.toISOString().split('T')[0];
+                const dateStr = dateToString(dayDate);
                 
                 // Check if this day falls within the vacation days range
                 if (dayDate >= start && dayDate <= end) {
@@ -1424,9 +1437,9 @@
                     const startDate = `${idParts[0]}-${idParts[1]}-${idParts[2]}`;
                     const endDate = `${idParts[3]}-${idParts[4]}-${idParts[5]}`;
                     
-                    const start = new Date(startDate);
-                    const end = new Date(endDate);
-                    const clicked = new Date(clickedDate);
+                    const start = stringToDate(startDate);
+                    const end = stringToDate(endDate);
+                    const clicked = stringToDate(clickedDate);
                     
                     if (clicked >= start && clicked <= end) {
                         // Scroll to this opportunity
