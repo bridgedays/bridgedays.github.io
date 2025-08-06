@@ -1068,8 +1068,8 @@
             const opportunities = [];
             
             // Find all weeks with holidays and group consecutive weeks
-            const holidayWeeks = findHolidayWeeks();
-            const consecutiveWeekGroups = groupConsecutiveWeeks(holidayWeeks);
+            const allWeeks = findHolidayWeeks();
+            const consecutiveWeekGroups = groupConsecutiveWeeks(allWeeks);
             
             // Process each group of consecutive weeks with holidays
             consecutiveWeekGroups.forEach(weekGroup => {
@@ -1093,8 +1093,46 @@
         }
         
         function findHolidayWeeks() {
-            const holidayWeeks = new Map();
+            if (holidays.length === 0) return [];
             
+            // Find the date range of all holidays
+            let earliestDate = null;
+            let latestDate = null;
+            
+            holidays.forEach(holiday => {
+                const holidayDate = holiday.startDate || holiday.date;
+                if (!holidayDate) return;
+                
+                const date = stringToDate(holidayDate);
+                if (!earliestDate || date < earliestDate) {
+                    earliestDate = new Date(date);
+                }
+                if (!latestDate || date > latestDate) {
+                    latestDate = new Date(date);
+                }
+            });
+            
+            if (!earliestDate || !latestDate) return [];
+            
+            // Get Monday of the week containing the earliest holiday
+            const startMonday = new Date(earliestDate);
+            startMonday.setDate(earliestDate.getDate() - ((earliestDate.getDay() + 6) % 7));
+            
+            // Get Monday of the week containing the latest holiday
+            const endMonday = new Date(latestDate);
+            endMonday.setDate(latestDate.getDate() - ((latestDate.getDay() + 6) % 7));
+            
+            // Create array of all weeks in range
+            const allWeeks = [];
+            for (let monday = new Date(startMonday); monday <= endMonday; monday.setDate(monday.getDate() + 7)) {
+                allWeeks.push({
+                    monday: new Date(monday),
+                    hasHolidayOnWorkday: false,
+                    holidays: []
+                });
+            }
+            
+            // Flag weeks that have holidays on workdays
             holidays.forEach(holiday => {
                 const holidayDate = holiday.startDate || holiday.date;
                 if (!holidayDate) return;
@@ -1106,65 +1144,51 @@
                     return;
                 }
                 
-                // Get Monday of the week containing this holiday
-                const monday = new Date(date);
-                monday.setDate(date.getDate() - ((date.getDay() + 6) % 7));
-                const weekKey = dateToString(monday);
+                // Find which week this holiday belongs to
+                const holidayMonday = new Date(date);
+                holidayMonday.setDate(date.getDate() - ((date.getDay() + 6) % 7));
                 
-                if (!holidayWeeks.has(weekKey)) {
-                    holidayWeeks.set(weekKey, {
-                        monday: new Date(monday),
-                        holidays: []
+                const week = allWeeks.find(w => w.monday.getTime() === holidayMonday.getTime());
+                if (week) {
+                    week.hasHolidayOnWorkday = true;
+                    
+                    // Extract holiday name
+                    let holidayName = 'Holiday';
+                    if (holiday.name && Array.isArray(holiday.name)) {
+                        const englishName = holiday.name.find(n => n.language === 'EN');
+                        const defaultName = holiday.name[0];
+                        holidayName = englishName ? englishName.text : (defaultName ? defaultName.text : 'Holiday');
+                    } else if (holiday.name) {
+                        holidayName = holiday.name;
+                    }
+                    
+                    week.holidays.push({
+                        date: stringToDate(holidayDate),
+                        name: holidayName
                     });
                 }
-                
-                // Extract holiday name
-                let holidayName = 'Holiday';
-                if (holiday.name && Array.isArray(holiday.name)) {
-                    const englishName = holiday.name.find(n => n.language === 'EN');
-                    const defaultName = holiday.name[0];
-                    holidayName = englishName ? englishName.text : (defaultName ? defaultName.text : 'Holiday');
-                } else if (holiday.name) {
-                    holidayName = holiday.name;
-                }
-                
-                holidayWeeks.get(weekKey).holidays.push({
-                    date: stringToDate(holidayDate),
-                    name: holidayName
-                });
             });
             
-            return holidayWeeks;
+            return allWeeks;
         }
         
-        function groupConsecutiveWeeks(holidayWeeks) {
-            const sortedWeeks = Array.from(holidayWeeks.entries())
-                .sort(([a], [b]) => new Date(a) - new Date(b));
-            
+        function groupConsecutiveWeeks(allWeeks) {
             const groups = [];
             let currentGroup = [];
             
-            sortedWeeks.forEach(([weekKey, weekData]) => {
-                const monday = new Date(weekKey);
-                
-                if (currentGroup.length === 0) {
-                    currentGroup.push(weekData);
+            allWeeks.forEach(week => {
+                if (week.hasHolidayOnWorkday) {
+                    currentGroup.push(week);
                 } else {
-                    const lastWeek = currentGroup[currentGroup.length - 1];
-                    const lastMonday = lastWeek.monday;
-                    const daysDiff = (monday - lastMonday) / (24 * 60 * 60 * 1000);
-                    
-                    if (daysDiff === 7) {
-                        // Consecutive week
-                        currentGroup.push(weekData);
-                    } else {
-                        // Gap found, start new group
-                        groups.push(currentGroup);
-                        currentGroup = [weekData];
+                    // Gap found, end current group if it has weeks
+                    if (currentGroup.length > 0) {
+                        groups.push([...currentGroup]);
+                        currentGroup = [];
                     }
                 }
             });
             
+            // Don't forget the last group
             if (currentGroup.length > 0) {
                 groups.push(currentGroup);
             }
