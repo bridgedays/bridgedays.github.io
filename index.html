@@ -401,8 +401,28 @@
             }
         }
         
+        function getUserLocale() {
+            // Get user's preferred language and country from browser
+            const language = navigator.language || navigator.languages[0] || 'en-US';
+            const [languageCode, countryCode] = language.split('-');
+            
+            return {
+                language: languageCode.toUpperCase(),
+                country: countryCode ? countryCode.toUpperCase() : null,
+                fullLocale: language
+            };
+        }
+        
         async function loadCountries() {
-            const response = await fetch(`${API_BASE}/Countries`);
+            const userLocale = getUserLocale();
+            
+            // Use user's language for API request if available
+            let url = `${API_BASE}/Countries`;
+            if (userLocale.language) {
+                url += `?languageIsoCode=${userLocale.language}`;
+            }
+            
+            const response = await fetch(url);
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
@@ -416,17 +436,30 @@
                 const option = document.createElement('option');
                 option.value = country.isoCode;
                 
-                // Extract English name from localized names array
+                // Try to use user's language first, then English, then fallback
+                const userLanguageName = country.name.find(n => n.language === userLocale.language);
                 const englishName = country.name.find(n => n.language === 'EN');
-                const defaultName = country.name[0]; // Fallback to first available name
-                option.textContent = englishName ? englishName.text : (defaultName ? defaultName.text : country.isoCode);
+                const defaultName = country.name[0];
+                
+                option.textContent = userLanguageName ? userLanguageName.text : 
+                                   (englishName ? englishName.text : 
+                                   (defaultName ? defaultName.text : country.isoCode));
                 
                 countrySelect.appendChild(option);
             });
             
-            // Set default to US if available
-            if (countries.find(c => c.isoCode === 'US')) {
-                countrySelect.value = 'US';
+            // Set default to user's country if available, otherwise US, otherwise first country
+            let defaultCountry = null;
+            if (userLocale.country && countries.find(c => c.isoCode === userLocale.country)) {
+                defaultCountry = userLocale.country;
+            } else if (countries.find(c => c.isoCode === 'US')) {
+                defaultCountry = 'US';
+            } else if (countries.length > 0) {
+                defaultCountry = countries[0].isoCode;
+            }
+            
+            if (defaultCountry) {
+                countrySelect.value = defaultCountry;
                 onCountryChange(); // Load subdivisions for default country
             }
         }
@@ -441,7 +474,15 @@
             }
             
             try {
-                const response = await fetch(`${API_BASE}/Subdivisions?countryIsoCode=${countryCode}`);
+                const userLocale = getUserLocale();
+                
+                // Use user's language for subdivision names
+                let url = `${API_BASE}/Subdivisions?countryIsoCode=${countryCode}`;
+                if (userLocale.language) {
+                    url += `&languageIsoCode=${userLocale.language}`;
+                }
+                
+                const response = await fetch(url);
                 if (!response.ok) {
                     subdivisionSelect.style.display = 'none';
                     return;
@@ -461,10 +502,14 @@
                     const option = document.createElement('option');
                     option.value = subdivision.code;
                     
-                    // Extract English name from localized names array
+                    // Try to use user's language first, then English, then fallback
+                    const userLanguageName = subdivision.name.find(n => n.language === userLocale.language);
                     const englishName = subdivision.name.find(n => n.language === 'EN');
                     const defaultName = subdivision.name[0];
-                    option.textContent = englishName ? englishName.text : (defaultName ? defaultName.text : subdivision.shortName);
+                    
+                    option.textContent = userLanguageName ? userLanguageName.text : 
+                                       (englishName ? englishName.text : 
+                                       (defaultName ? defaultName.text : subdivision.shortName));
                     
                     subdivisionSelect.appendChild(option);
                 });
@@ -483,6 +528,7 @@
         }
         
         async function fetchHolidays(country, year, month = null, subdivision = null) {
+            const userLocale = getUserLocale();
             let url;
             
             if (month) {
@@ -491,6 +537,11 @@
                 url = `${API_BASE}/PublicHolidays?countryIsoCode=${country}&validFrom=${year}-${monthStr}-01&validTo=${year}-${monthStr}-${lastDay}`;
             } else {
                 url = `${API_BASE}/PublicHolidays?countryIsoCode=${country}&validFrom=${year}-01-01&validTo=${year}-12-31`;
+            }
+            
+            // Add user's language for localized holiday names
+            if (userLocale.language) {
+                url += `&languageIsoCode=${userLocale.language}`;
             }
             
             if (subdivision) {
