@@ -269,12 +269,22 @@
             border: 1px solid #ccc;
         }
         
+        .right-controls {
+            margin-left: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: flex-end;
+        }
+        
+        .signature {
+            font-size: 11px;
+            color: #666;
+            font-style: italic;
+        }
+        
         .github-link {
-            position: absolute;
-            top: 10px;
-            right: 15px;
             font-size: 12px;
-            z-index: 1000;
         }
         
         .github-link a {
@@ -293,26 +303,9 @@
             background: rgba(255, 255, 255, 0.95);
             border-color: #007bff;
         }
-        
-        .signature {
-            position: absolute;
-            top: 45px;
-            right: 15px;
-            font-size: 11px;
-            color: #666;
-            font-style: italic;
-            z-index: 1000;
-        }
     </style>
 </head>
 <body>
-        <div class="github-link">
-            <a href="https://github.com/bridgedays/bridgedays.github.io" target="_blank" rel="noopener">
-                <span>⭐</span>
-                <span>GitHub</span>
-            </a>
-        </div>
-        <div class="signature">✨ Vibe Coded with Claude</div>
         <div class="controls">
             <div class="control-group">
                 <label>Bridge Days Calculator</label>
@@ -378,6 +371,16 @@
                     <option value="1">Monday</option>
                     <option value="0">Sunday</option>
                 </select>
+            </div>
+            
+            <div class="control-group right-controls">
+                <div class="signature">✨ Vibe Coded with Claude</div>
+                <div class="github-link">
+                    <a href="https://github.com/bridgedays/bridgedays.github.io" target="_blank" rel="noopener">
+                        <span>⭐</span>
+                        <span>GitHub</span>
+                    </a>
+                </div>
             </div>
         </div>
         
