@@ -122,7 +122,8 @@
         }
         
         .day.weekend {
-            background: #f8f9fa;
+            background: #dee2e6;
+            color: #6c757d;
         }
         
         .day.workday {
@@ -292,10 +293,18 @@
             gap: 5px;
         }
         
-        .legend-color {
+        .legend .day {
             width: 20px;
             height: 20px;
-            border: 1px solid #ccc;
+            min-height: 20px;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .legend-item span {
+            font-size: 12px;
         }
         
         .right-controls {
@@ -415,16 +424,28 @@
         
         <div class="legend">
             <div class="legend-item">
-                <div class="legend-color" style="background: #ffcccb;"></div>
+                <div class="day holiday">1</div>
                 <span>Public Holiday</span>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background: #ffffcc; border: 2px solid #ffd700;"></div>
-                <span>Bridge Day</span>
+                <div class="day bridge-day highlighted">1</div>
+                <span>Bridge Day Opportunity</span>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background: #f8f9fa;"></div>
+                <div class="day weekend">1</div>
                 <span>Weekend/Non-workday</span>
+            </div>
+            <div class="legend-item">
+                <div class="day vacation-highlighted">1</div>
+                <span>Vacation Days (on hover)</span>
+            </div>
+            <div class="legend-item">
+                <div class="day holiday-highlighted">1</div>
+                <span>Holidays (on hover)</span>
+            </div>
+            <div class="legend-item">
+                <div class="day range-highlighted">1</div>
+                <span>Extended Range (on hover)</span>
             </div>
         </div>
         
@@ -1376,8 +1397,8 @@
             const end = stringToDate(endDate);
             
             if (!highlight) {
-                // Remove all highlight classes
-                const allDayElements = document.querySelectorAll('.day');
+                // Remove all highlight classes from calendar days only (not legend)
+                const allDayElements = document.querySelectorAll('.month .day');
                 allDayElements.forEach(dayEl => {
                     dayEl.classList.remove('highlighted', 'range-highlighted', 'vacation-highlighted', 'holiday-highlighted');
                 });
@@ -1413,8 +1434,8 @@
             }
             extendedEnd.setDate(extendedEnd.getDate() - 1);
             
-            // Get all day elements and calculate their dates
-            const allDayElements = document.querySelectorAll('.day:not(.other-month)');
+            // Get all calendar day elements and calculate their dates
+            const allDayElements = document.querySelectorAll('.month .day:not(.other-month)');
             
             allDayElements.forEach(dayEl => {
                 // Calculate the date for this day element
