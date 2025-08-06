@@ -985,11 +985,11 @@
             if (uniqueHolidays.length === 1) {
                 holidayNames = uniqueHolidays[0];
             } else {
-                holidayNames = `${uniqueHolidays[0]} through to ${uniqueHolidays[uniqueHolidays.length - 1]}`;
+                holidayNames = `${uniqueHolidays[0]} → ${uniqueHolidays[uniqueHolidays.length - 1]}`;
             }
             
             return {
-                name: `${holidayNames} (${formatDateRange(startDate, endDate)})`,
+                name: `${holidayNames} (${formatDateRangeForTitle(startDate, endDate)})`,
                 startDate: formatDate(startDate),
                 endDate: formatDate(endDate),
                 vacationDays: vacationDays.length,
@@ -1038,6 +1038,26 @@
                 return dayNames[startDate.getDay()];
             } else {
                 return `${dayNames[startDate.getDay()]}-${dayNames[endDate.getDay()]}`;
+            }
+        }
+        
+        function formatDateRangeForTitle(startDate, endDate) {
+            const startStr = formatDate(startDate);
+            const endStr = formatDate(endDate);
+            
+            if (startStr === endStr) {
+                // Same day
+                return startStr;
+            }
+            
+            // Check if same month and year
+            if (startDate.getFullYear() === endDate.getFullYear() && 
+                startDate.getMonth() === endDate.getMonth()) {
+                // Same month: show "2024-12-27 to -31"
+                return `${startStr} to -${String(endDate.getDate()).padStart(2, '0')}`;
+            } else {
+                // Different months: show full dates
+                return `${startStr} to ${endStr}`;
             }
         }
         
