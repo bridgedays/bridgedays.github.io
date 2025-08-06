@@ -886,6 +886,12 @@
                 if (!holidayDate) return;
                 
                 const date = new Date(holidayDate);
+                
+                // Only consider this holiday if it falls on a workday
+                if (!workdays.includes(date.getDay())) {
+                    return;
+                }
+                
                 // Get Monday of the week containing this holiday
                 const monday = new Date(date);
                 monday.setDate(date.getDate() - ((date.getDay() + 6) % 7));
