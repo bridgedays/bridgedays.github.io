@@ -290,9 +290,13 @@
             });
             
             // Load countries and initial calculation
-            loadCountries().then(() => {
-                calculateBridgeDays();
-            });
+            loadCountries()
+                .then(() => calculateBridgeDays())
+                .catch(error => {
+                    console.error('Failed to load countries:', error);
+                    document.getElementById('error').textContent = 'Failed to load countries: ' + error.message;
+                    document.getElementById('error').style.display = 'block';
+                });
         });
         
         function updateWorkdays() {
@@ -346,40 +350,24 @@
         }
         
         async function loadCountries() {
-            try {
-                const response = await fetch(`${API_BASE}/Countries`);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                const countries = await response.json();
-                
-                const countrySelect = document.getElementById('country');
-                countrySelect.innerHTML = '';
-                
-                countries.forEach(country => {
-                    const option = document.createElement('option');
-                    option.value = country.isoCode;
-                    option.textContent = country.name;
-                    countrySelect.appendChild(option);
-                });
-                
-                // Set default to US if available
-                if (countries.find(c => c.isoCode === 'US')) {
-                    countrySelect.value = 'US';
-                }
-                
-            } catch (error) {
-                console.warn('Could not load countries, using fallback list:', error);
-                // Fallback country list
-                const countrySelect = document.getElementById('country');
-                countrySelect.innerHTML = `
-                    <option value="US">United States</option>
-                    <option value="DE">Germany</option>
-                    <option value="FR">France</option>
-                    <option value="GB">United Kingdom</option>
-                    <option value="CA">Canada</option>
-                    <option value="AU">Australia</option>
-                `;
+            const response = await fetch(`${API_BASE}/Countries`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            const countries = await response.json();
+            
+            const countrySelect = document.getElementById('country');
+            countrySelect.innerHTML = '';
+            
+            countries.forEach(country => {
+                const option = document.createElement('option');
+                option.value = country.isoCode;
+                option.textContent = country.name;
+                countrySelect.appendChild(option);
+            });
+            
+            // Set default to US if available
+            if (countries.find(c => c.isoCode === 'US')) {
                 countrySelect.value = 'US';
             }
         }
@@ -395,72 +383,15 @@
                 url = `${API_BASE}/PublicHolidays?countryIsoCode=${country}&validFrom=${year}-01-01&validTo=${year}-12-31`;
             }
             
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                const data = await response.json();
-                console.log('Fetched holidays:', data); // Debug log
-                return data;
-            } catch (error) {
-                // Fallback: create mock data for demonstration
-                console.warn('API call failed, using mock data:', error);
-                return generateMockHolidays(year, month);
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
             }
+            const data = await response.json();
+            console.log('Fetched holidays:', data); // Debug log
+            return data;
         }
         
-        function generateMockHolidays(year, month = null) {
-            const mockHolidays = [];
-            
-            if (!month || month === 1) {
-                mockHolidays.push({
-                    date: `${year}-01-01`,
-                    name: "New Year's Day",
-                    countryCode: 'US'
-                });
-                mockHolidays.push({
-                    date: `${year}-01-15`,
-                    name: "Martin Luther King Jr. Day",
-                    countryCode: 'US'
-                });
-            }
-            
-            if (!month || month === 12) {
-                mockHolidays.push({
-                    date: `${year}-12-25`,
-                    name: "Christmas Day",
-                    countryCode: 'US'
-                });
-                mockHolidays.push({
-                    date: `${year}-12-24`,
-                    name: "Christmas Eve",
-                    countryCode: 'US'
-                });
-            }
-            
-            if (!month) {
-                mockHolidays.push(
-                    {
-                        date: `${year}-07-04`,
-                        name: "Independence Day",
-                        countryCode: 'US'
-                    },
-                    {
-                        date: `${year}-11-23`,
-                        name: "Thanksgiving Day",
-                        countryCode: 'US'
-                    },
-                    {
-                        date: `${year}-11-24`,
-                        name: "Black Friday",
-                        countryCode: 'US'
-                    }
-                );
-            }
-            
-            return mockHolidays;
-        }
         
         function renderCalendarAndEfficiency() {
             const year = parseInt(document.getElementById('year').value);
