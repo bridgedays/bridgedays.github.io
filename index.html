@@ -7,65 +7,86 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
+            margin: 0;
+            padding: 10px;
             background-color: #f5f5f5;
         }
         
         .container {
             background: white;
-            padding: 20px;
+            padding: 15px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
         .controls {
-            margin-bottom: 20px;
-            padding: 15px;
+            margin-bottom: 15px;
+            padding: 10px;
             background: #f8f9fa;
             border-radius: 5px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: end;
         }
         
         .control-group {
-            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
         }
         
-        label {
-            display: inline-block;
-            width: 120px;
+        .control-group label {
             font-weight: bold;
+            font-size: 12px;
+            color: #666;
+            margin: 0;
         }
         
         select, input {
             padding: 5px;
-            margin: 5px;
+            margin: 0;
+            border: 1px solid #ccc;
+            border-radius: 3px;
         }
         
         .workdays {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
         }
         
         .workday-checkbox {
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 3px;
+            font-size: 12px;
+        }
+        
+        .workday-checkbox input {
+            margin: 0;
+        }
+        
+        .workday-checkbox label {
+            font-weight: normal;
+            color: #333;
+            font-size: 12px;
         }
         
         .month {
             border: 1px solid #ddd;
             border-radius: 5px;
-            padding: 8px;
-            min-width: 160px;
+            padding: 6px;
+            min-width: 140px;
+            flex: 0 0 auto;
         }
         
         .month-view {
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 10px;
-            margin: 20px 0;
+            display: flex;
+            gap: 8px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+            justify-content: flex-start;
         }
         
         .month-header {
@@ -130,17 +151,23 @@
         }
         
         .efficiency-list {
-            margin-top: 20px;
+            margin-top: 15px;
+        }
+        
+        .efficiency-items {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
         }
         
         .efficiency-item {
             background: #e9ecef;
-            margin: 5px 0;
             padding: 10px;
             border-radius: 5px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            min-width: 200px;
+            flex: 0 0 auto;
         }
         
         .efficiency-good {
@@ -156,6 +183,9 @@
         .efficiency-score {
             font-weight: bold;
             color: #007bff;
+            font-size: 18px;
+            margin-top: 5px;
+            text-align: center;
         }
         
         .loading {
@@ -194,56 +224,61 @@
 </head>
 <body>
     <div class="container">
-        <h1>Bridge Days Calculator</h1>
-        
         <div class="controls">
             <div class="control-group">
-                <label for="country">Country:</label>
-                <select id="country">
-                    <option value="">Loading countries...</option>
-                </select>
-                
-                <label for="subdivision">Region:</label>
-                <select id="subdivision" style="display: none;">
-                    <option value="">All regions</option>
-                </select>
-                
-                <label for="year">Year:</label>
-                <input type="number" id="year" min="2020" max="2030">
-                
-                <button onclick="calculateBridgeDays()">Calculate</button>
+                <label>Bridge Days Calculator</label>
+                <h1 style="margin: 0; font-size: 24px;">🌉</h1>
             </div>
             
             <div class="control-group">
-                <label>Work Days:</label>
+                <label for="country">Country</label>
+                <select id="country">
+                    <option value="">Loading countries...</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="subdivision">Region</label>
+                <select id="subdivision" style="display: none;">
+                    <option value="">All regions</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="year">Year</label>
+                <input type="number" id="year" min="2020" max="2030">
+            </div>
+            
+            <div class="control-group">
+                <label>Work Days</label>
                 <div class="workdays">
                     <div class="workday-checkbox">
                         <input type="checkbox" id="monday" checked>
-                        <label for="monday">Mon</label>
+                        <label for="monday">M</label>
                     </div>
                     <div class="workday-checkbox">
                         <input type="checkbox" id="tuesday" checked>
-                        <label for="tuesday">Tue</label>
+                        <label for="tuesday">T</label>
                     </div>
                     <div class="workday-checkbox">
                         <input type="checkbox" id="wednesday" checked>
-                        <label for="wednesday">Wed</label>
+                        <label for="wednesday">W</label>
                     </div>
                     <div class="workday-checkbox">
                         <input type="checkbox" id="thursday" checked>
-                        <label for="thursday">Thu</label>
+                        <label for="thursday">T</label>
                     </div>
                     <div class="workday-checkbox">
                         <input type="checkbox" id="friday" checked>
-                        <label for="friday">Fri</label>
+                        <label for="friday">F</label>
                     </div>
                     <div class="workday-checkbox">
                         <input type="checkbox" id="saturday">
-                        <label for="saturday">Sat</label>
+                        <label for="saturday">S</label>
                     </div>
                     <div class="workday-checkbox">
                         <input type="checkbox" id="sunday">
-                        <label for="sunday">Sun</label>
+                        <label for="sunday">S</label>
                     </div>
                 </div>
             </div>
@@ -274,7 +309,7 @@
         
         <div id="efficiency-list" class="efficiency-list" style="display: none;">
             <h3>Bridge Day Opportunities</h3>
-            <div id="efficiency-items"></div>
+            <div id="efficiency-items" class="efficiency-items"></div>
         </div>
     </div>
 
@@ -294,8 +329,10 @@
                 cb.addEventListener('change', updateWorkdays);
             });
             
-            // Add change listener to country dropdown
+            // Add change listeners for auto-calculation
             document.getElementById('country').addEventListener('change', onCountryChange);
+            document.getElementById('subdivision').addEventListener('change', calculateBridgeDays);
+            document.getElementById('year').addEventListener('change', calculateBridgeDays);
             
             // Load countries and initial calculation
             loadCountries()
@@ -339,7 +376,7 @@
             document.getElementById('efficiency-list').style.display = 'none';
             
             try {
-                // Fetch holidays for the extended period (Dec previous year to Jan following year)
+                // Fetch holidays for 14 months: Dec previous year to Jan year after next
                 holidays = [];
                 
                 // Get holidays for December of previous year
@@ -350,9 +387,13 @@
                 const currentYearHolidays = await fetchHolidays(country, year, null, subdivision);
                 holidays = holidays.concat(currentYearHolidays);
                 
-                // Get holidays for January of following year
-                const nextYearHolidays = await fetchHolidays(country, year + 1, 1, subdivision);
+                // Get holidays for January of year after next
+                const nextYearHolidays = await fetchHolidays(country, year + 1, null, subdivision);
                 holidays = holidays.concat(nextYearHolidays);
+                
+                // Get holidays for January of the year after that
+                const futureYearHolidays = await fetchHolidays(country, year + 2, 1, subdivision);
+                holidays = holidays.concat(futureYearHolidays);
                 
                 document.getElementById('loading').style.display = 'none';
                 renderCalendarAndEfficiency();
@@ -473,11 +514,19 @@
         function renderCalendarAndEfficiency() {
             const year = parseInt(document.getElementById('year').value);
             
-            // Show all 12 months of the selected year
+            // Show 14 months: Dec previous year through Jan of year after next
             const monthsToShow = [];
+            
+            // December of previous year
+            monthsToShow.push({year: year - 1, month: 11});
+            
+            // All 12 months of selected year
             for (let month = 0; month < 12; month++) {
                 monthsToShow.push({year: year, month: month});
             }
+            
+            // January of year after next
+            monthsToShow.push({year: year + 2, month: 0});
             
             const monthView = document.getElementById('month-view');
             monthView.innerHTML = '';
@@ -604,7 +653,7 @@
                 
                 const efficiency = document.createElement('div');
                 efficiency.className = 'efficiency-score';
-                efficiency.textContent = `${opportunity.efficiency.toFixed(1)}x`;
+                efficiency.textContent = `${opportunity.efficiency.toFixed(1)}x efficiency`;
                 
                 item.appendChild(description);
                 item.appendChild(efficiency);
