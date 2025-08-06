@@ -64,8 +64,16 @@
         .month {
             border: 1px solid #ddd;
             border-radius: 5px;
-            padding: 10px;
-            min-width: 250px;
+            padding: 8px;
+            min-width: 180px;
+            flex: 1;
+        }
+        
+        .month-view {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            margin: 20px 0;
         }
         
         .month-header {
@@ -94,12 +102,12 @@
         
         .day {
             text-align: center;
-            padding: 8px 4px;
+            padding: 4px 2px;
             border: 1px solid #eee;
             cursor: pointer;
             position: relative;
-            min-height: 20px;
-            font-size: 12px;
+            min-height: 16px;
+            font-size: 10px;
         }
         
         .day.other-month {
@@ -200,16 +208,11 @@
             <div class="control-group">
                 <label for="country">Country:</label>
                 <select id="country">
-                    <option value="US">United States</option>
-                    <option value="DE">Germany</option>
-                    <option value="FR">France</option>
-                    <option value="UK">United Kingdom</option>
-                    <option value="CA">Canada</option>
-                    <option value="AU">Australia</option>
+                    <option value="">Loading countries...</option>
                 </select>
                 
                 <label for="year">Year:</label>
-                <input type="number" id="year" min="2020" max="2030" value="2024">
+                <input type="number" id="year" min="2020" max="2030">
                 
                 <button onclick="calculateBridgeDays()">Calculate</button>
             </div>
@@ -285,14 +288,19 @@
         
         // Add event listeners for automatic recalculation
         document.addEventListener('DOMContentLoaded', function() {
+            // Set current year as default
+            document.getElementById('year').value = new Date().getFullYear();
+            
             // Add change listeners to all checkboxes
             const checkboxes = document.querySelectorAll('input[type="checkbox"]');
             checkboxes.forEach(cb => {
                 cb.addEventListener('change', updateWorkdays);
             });
             
-            // Initial calculation
-            calculateBridgeDays();
+            // Load countries and initial calculation
+            loadCountries().then(() => {
+                calculateBridgeDays();
+            });
         });
         
         function updateWorkdays() {
@@ -345,12 +353,54 @@
             }
         }
         
+        async function loadCountries() {
+            try {
+                const response = await fetch(`${API_BASE}/Countries`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const countries = await response.json();
+                
+                const countrySelect = document.getElementById('country');
+                countrySelect.innerHTML = '';
+                
+                countries.forEach(country => {
+                    const option = document.createElement('option');
+                    option.value = country.isoCode;
+                    option.textContent = country.name;
+                    countrySelect.appendChild(option);
+                });
+                
+                // Set default to US if available
+                if (countries.find(c => c.isoCode === 'US')) {
+                    countrySelect.value = 'US';
+                }
+                
+            } catch (error) {
+                console.warn('Could not load countries, using fallback list:', error);
+                // Fallback country list
+                const countrySelect = document.getElementById('country');
+                countrySelect.innerHTML = `
+                    <option value="US">United States</option>
+                    <option value="DE">Germany</option>
+                    <option value="FR">France</option>
+                    <option value="GB">United Kingdom</option>
+                    <option value="CA">Canada</option>
+                    <option value="AU">Australia</option>
+                `;
+                countrySelect.value = 'US';
+            }
+        }
+        
         async function fetchHolidays(country, year, month = null) {
-            let url = `${API_BASE}/PublicHolidays?countryIsoCode=${country}&validFrom=${year}-01-01&validTo=${year}-12-31`;
+            let url;
             
             if (month) {
                 const monthStr = month.toString().padStart(2, '0');
-                url = `${API_BASE}/PublicHolidays?countryIsoCode=${country}&validFrom=${year}-${monthStr}-01&validTo=${year}-${monthStr}-31`;
+                const lastDay = new Date(year, month, 0).getDate();
+                url = `${API_BASE}/PublicHolidays?countryIsoCode=${country}&validFrom=${year}-${monthStr}-01&validTo=${year}-${monthStr}-${lastDay}`;
+            } else {
+                url = `${API_BASE}/PublicHolidays?countryIsoCode=${country}&validFrom=${year}-01-01&validTo=${year}-12-31`;
             }
             
             try {
@@ -358,7 +408,9 @@
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }
-                return await response.json();
+                const data = await response.json();
+                console.log('Fetched holidays:', data); // Debug log
+                return data;
             } catch (error) {
                 // Fallback: create mock data for demonstration
                 console.warn('API call failed, using mock data:', error);
@@ -420,14 +472,12 @@
         
         function renderCalendarAndEfficiency() {
             const year = parseInt(document.getElementById('year').value);
-            const monthsToShow = [
-                {year: year - 1, month: 11}, // December (0-indexed)
-                {year: year, month: 0},      // January
-                {year: year, month: 1},      // February
-                {year: year, month: 10},     // November
-                {year: year, month: 11},     // December
-                {year: year + 1, month: 0}   // January next year
-            ];
+            
+            // Show all 12 months of the selected year
+            const monthsToShow = [];
+            for (let month = 0; month < 12; month++) {
+                monthsToShow.push({year: year, month: month});
+            }
             
             const monthView = document.getElementById('month-view');
             monthView.innerHTML = '';
@@ -494,10 +544,14 @@
                 
                 // Check if it's a holiday
                 const dateStr = currentDate.toISOString().split('T')[0];
-                const holiday = holidays.find(h => h.date === dateStr);
+                const holiday = holidays.find(h => {
+                    // Handle different possible date formats from API
+                    const holidayDate = h.date || h.startDate;
+                    return holidayDate === dateStr;
+                });
                 if (holiday) {
                     dayDiv.classList.add('holiday');
-                    dayDiv.title = holiday.name;
+                    dayDiv.title = holiday.name || holiday.localName || 'Holiday';
                 }
                 
                 grid.appendChild(dayDiv);
