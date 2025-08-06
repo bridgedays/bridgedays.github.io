@@ -144,6 +144,19 @@
             box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
         }
         
+        .day.range-highlighted {
+            border: 2px solid #007bff;
+            box-shadow: 0 0 3px rgba(0, 123, 255, 0.3);
+        }
+        
+        .day.vacation-highlighted {
+            background: #ff6b6b !important;
+            border: 2px solid #e55a5a;
+            box-shadow: 0 0 5px rgba(255, 107, 107, 0.5);
+            color: white;
+            font-weight: bold;
+        }
+        
         .day.selected {
             background: #007bff;
             color: white;
@@ -1081,20 +1094,58 @@
             const start = new Date(startDate);
             const end = new Date(endDate);
             
-            // Get all day elements with data-date attributes and check if they fall in range
+            if (!highlight) {
+                // Remove all highlight classes
+                const allDayElements = document.querySelectorAll('.day');
+                allDayElements.forEach(dayEl => {
+                    dayEl.classList.remove('highlighted', 'range-highlighted', 'vacation-highlighted');
+                });
+                return;
+            }
+            
+            // Get all holiday dates
+            const holidayDates = new Set();
+            holidays.forEach(holiday => {
+                const holidayDate = holiday.startDate || holiday.date;
+                if (holidayDate) {
+                    holidayDates.add(holidayDate);
+                }
+            });
+            
+            // Calculate extended range (same logic as calculateExtendedDaysOff)
+            const extendedStart = new Date(start);
+            const extendedEnd = new Date(end);
+            
+            // Extend backwards
+            extendedStart.setDate(extendedStart.getDate() - 1);
+            while (extendedStart <= end && (!workdays.includes(extendedStart.getDay()) || 
+                   holidayDates.has(extendedStart.toISOString().split('T')[0]))) {
+                extendedStart.setDate(extendedStart.getDate() - 1);
+            }
+            extendedStart.setDate(extendedStart.getDate() + 1);
+            
+            // Extend forwards
+            extendedEnd.setDate(extendedEnd.getDate() + 1);
+            while (extendedEnd >= start && (!workdays.includes(extendedEnd.getDay()) || 
+                   holidayDates.has(extendedEnd.toISOString().split('T')[0]))) {
+                extendedEnd.setDate(extendedEnd.getDate() + 1);
+            }
+            extendedEnd.setDate(extendedEnd.getDate() - 1);
+            
+            // Get all day elements with data-date attributes
             const allDayElements = document.querySelectorAll('.day[data-date]');
             
             allDayElements.forEach(dayEl => {
                 const dateStr = dayEl.dataset.date;
                 const dayDate = new Date(dateStr);
                 
-                // Check if this day falls within the range (inclusive)
+                // Check if this day falls within the vacation days range
                 if (dayDate >= start && dayDate <= end) {
-                    if (highlight) {
-                        dayEl.classList.add('highlighted');
-                    } else {
-                        dayEl.classList.remove('highlighted');
-                    }
+                    dayEl.classList.add('vacation-highlighted');
+                }
+                // Check if this day falls within the extended range
+                else if (dayDate >= extendedStart && dayDate <= extendedEnd) {
+                    dayEl.classList.add('range-highlighted');
                 }
             });
         }
