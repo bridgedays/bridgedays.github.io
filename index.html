@@ -1330,8 +1330,11 @@
         }
         
         function highlightBridgeDays(startDate, endDate, highlight) {
-            const start = new Date(startDate);
-            const end = new Date(endDate);
+            // Parse date strings and create local dates to match calendar day creation
+            const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+            const start = new Date(startYear, startMonth - 1, startDay);
+            const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+            const end = new Date(endYear, endMonth - 1, endDay);
             
             if (!highlight) {
                 // Remove all highlight classes
