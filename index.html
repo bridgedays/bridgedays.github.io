@@ -383,32 +383,115 @@
         let workdays = [1, 2, 3, 4, 5]; // Monday = 1, Sunday = 0
         let weekStartDay = 1; // 1 = Monday, 0 = Sunday
         
+        // Settings management
+        function saveSettings() {
+            const settings = {
+                country: document.getElementById('country').value,
+                subdivision: document.getElementById('subdivision').value,
+                year: document.getElementById('year').value,
+                workdays: workdays,
+                weekStartDay: weekStartDay
+            };
+            localStorage.setItem('bridgeDaysSettings', JSON.stringify(settings));
+        }
+        
+        function loadSettings() {
+            try {
+                const savedSettings = localStorage.getItem('bridgeDaysSettings');
+                if (!savedSettings) return false;
+                
+                const settings = JSON.parse(savedSettings);
+                
+                // Set year (always use current year if no saved year or if saved year is invalid)
+                const currentYear = new Date().getFullYear();
+                document.getElementById('year').value = settings.year || currentYear;
+                
+                // Set workdays
+                if (settings.workdays && Array.isArray(settings.workdays)) {
+                    workdays = settings.workdays;
+                    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                    days.forEach((day, index) => {
+                        document.getElementById(day).checked = workdays.includes(index);
+                    });
+                }
+                
+                // Set week start day
+                if (settings.weekStartDay !== undefined) {
+                    weekStartDay = settings.weekStartDay;
+                    document.getElementById('weekStartDay').value = weekStartDay;
+                }
+                
+                // Return the settings to be used after countries are loaded
+                return settings;
+            } catch (error) {
+                console.warn('Failed to load saved settings:', error);
+                return false;
+            }
+        }
+        
         // Add event listeners for automatic recalculation
         document.addEventListener('DOMContentLoaded', function() {
             // Set current year as default
             document.getElementById('year').value = new Date().getFullYear();
             
+            // Load saved settings
+            const savedSettings = loadSettings();
+            
             // Add change listeners to all checkboxes
             const checkboxes = document.querySelectorAll('input[type="checkbox"]');
             checkboxes.forEach(cb => {
-                cb.addEventListener('change', updateWorkdays);
+                cb.addEventListener('change', function() {
+                    updateWorkdays();
+                    saveSettings();
+                });
             });
             
             // Add change listeners for auto-calculation
-            document.getElementById('country').addEventListener('change', onCountryChange);
-            document.getElementById('subdivision').addEventListener('change', calculateBridgeDays);
-            document.getElementById('year').addEventListener('change', calculateBridgeDays);
+            document.getElementById('country').addEventListener('change', function() {
+                onCountryChange();
+                saveSettings();
+            });
+            document.getElementById('subdivision').addEventListener('change', function() {
+                calculateBridgeDays();
+                saveSettings();
+            });
+            document.getElementById('year').addEventListener('change', function() {
+                calculateBridgeDays();
+                saveSettings();
+            });
             document.getElementById('weekStartDay').addEventListener('change', function() {
                 weekStartDay = parseInt(this.value);
                 renderCalendarAndEfficiency();
+                saveSettings();
             });
             
             // Load countries and initial calculation
             loadCountries()
                 .then(() => {
-                    // Always ensure calendar renders, even if country/subdivision loading had issues
-                    if (!document.getElementById('month-view').hasChildNodes()) {
-                        calculateBridgeDays();
+                    // Apply saved country and subdivision if available
+                    if (savedSettings && savedSettings.country) {
+                        const countrySelect = document.getElementById('country');
+                        if (countrySelect.querySelector(`option[value="${savedSettings.country}"]`)) {
+                            countrySelect.value = savedSettings.country;
+                            // Load subdivisions for saved country, then set subdivision
+                            onCountryChange().then(() => {
+                                if (savedSettings.subdivision) {
+                                    const subdivisionSelect = document.getElementById('subdivision');
+                                    if (subdivisionSelect.querySelector(`option[value="${savedSettings.subdivision}"]`)) {
+                                        subdivisionSelect.value = savedSettings.subdivision;
+                                    }
+                                }
+                                calculateBridgeDays();
+                            });
+                        } else {
+                            // Saved country not available, use default
+                            calculateBridgeDays();
+                        }
+                    } else {
+                        // Always ensure calendar renders, even if country/subdivision loading had issues
+                        if (!document.getElementById('month-view').hasChildNodes()) {
+                            calculateBridgeDays();
+                        }
                     }
                 })
                 .catch(error => {
@@ -611,8 +694,10 @@
                 subdivisionSelect.style.display = 'inline-block';
             }
             
-            // Always calculate bridge days when country changes
-            calculateBridgeDays();
+            // Only calculate bridge days if this isn't being called during settings restoration
+            if (!window.restoringSettings) {
+                calculateBridgeDays();
+            }
         }
         
         async function fetchHolidays(country, year, month = null, subdivision = null) {
