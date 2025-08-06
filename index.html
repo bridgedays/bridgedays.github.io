@@ -92,35 +92,36 @@
         .month-header {
             text-align: center;
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 4px;
             background: #007bff;
             color: white;
-            padding: 5px;
-            border-radius: 3px;
+            padding: 3px;
+            border-radius: 2px;
+            font-size: 11px;
         }
         
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 2px;
+            gap: 1px;
         }
         
         .day-header {
             text-align: center;
             font-weight: bold;
-            padding: 5px;
+            padding: 2px;
             background: #e9ecef;
-            font-size: 12px;
+            font-size: 10px;
         }
         
         .day {
             text-align: center;
-            padding: 4px 2px;
+            padding: 2px 1px;
             border: 1px solid #eee;
             cursor: pointer;
             position: relative;
-            min-height: 16px;
-            font-size: 10px;
+            min-height: 14px;
+            font-size: 9px;
         }
         
         .day.other-month {
@@ -514,6 +515,20 @@
         function renderCalendarAndEfficiency() {
             const year = parseInt(document.getElementById('year').value);
             
+            // Calculate bridge opportunities first
+            const bridgeOpportunities = findBridgeOpportunities();
+            
+            // Create a set of all bridge days for quick lookup
+            const bridgeDays = new Set();
+            bridgeOpportunities.forEach(opportunity => {
+                const startDate = new Date(opportunity.startDate);
+                const endDate = new Date(opportunity.endDate);
+                
+                for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                    bridgeDays.add(d.toISOString().split('T')[0]);
+                }
+            });
+            
             // Show 14 months: Dec previous year through Jan of year after next
             const monthsToShow = [];
             
@@ -532,14 +547,14 @@
             monthView.innerHTML = '';
             
             monthsToShow.forEach(({year: yr, month}) => {
-                const monthElement = createMonthView(yr, month);
+                const monthElement = createMonthView(yr, month, bridgeDays);
                 monthView.appendChild(monthElement);
             });
             
-            calculateAndDisplayEfficiency();
+            displayEfficiencyOpportunities(bridgeOpportunities);
         }
         
-        function createMonthView(year, month) {
+        function createMonthView(year, month, bridgeDays = new Set()) {
             const monthDiv = document.createElement('div');
             monthDiv.className = 'month';
             
@@ -614,6 +629,16 @@
                     dayDiv.title = holidayName;
                 }
                 
+                // Check if it's a bridge day
+                if (bridgeDays.has(dateStr)) {
+                    dayDiv.classList.add('bridge-day');
+                    if (!dayDiv.title) {
+                        dayDiv.title = 'Bridge Day Opportunity';
+                    } else {
+                        dayDiv.title += ' (Bridge Day)';
+                    }
+                }
+                
                 grid.appendChild(dayDiv);
             }
             
@@ -621,9 +646,7 @@
             return monthDiv;
         }
         
-        function calculateAndDisplayEfficiency() {
-            const bridgeOpportunities = findBridgeOpportunities();
-            
+        function displayEfficiencyOpportunities(bridgeOpportunities) {
             const efficiencyList = document.getElementById('efficiency-list');
             const efficiencyItems = document.getElementById('efficiency-items');
             
