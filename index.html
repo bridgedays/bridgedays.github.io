@@ -332,10 +332,18 @@
             
             // Load countries and initial calculation
             loadCountries()
+                .then(() => {
+                    // Always ensure calendar renders, even if country/subdivision loading had issues
+                    if (!document.getElementById('month-view').hasChildNodes()) {
+                        calculateBridgeDays();
+                    }
+                })
                 .catch(error => {
                     console.error('Failed to load countries:', error);
                     document.getElementById('error').textContent = 'Failed to load countries: ' + error.message;
                     document.getElementById('error').style.display = 'block';
+                    // Still try to render calendar even on error
+                    calculateBridgeDays();
                 });
         });
         
