@@ -138,7 +138,11 @@
         
         .day.bridge-day {
             background: #ffffcc;
+        }
+        
+        .day.bridge-day.highlighted {
             border: 2px solid #ffd700;
+            box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
         }
         
         .day.selected {
@@ -148,6 +152,11 @@
         
         .efficiency-list {
             margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
         }
         
         .efficiency-items {
@@ -165,6 +174,12 @@
             flex: 0 0 auto;
             gap: 10px;
             align-items: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .efficiency-item:hover {
+            background: #dee2e6;
         }
         
         .efficiency-description {
@@ -710,12 +725,18 @@
                 // Check if it's a bridge day
                 if (bridgeDays.has(dateStr)) {
                     dayDiv.classList.add('bridge-day');
+                    dayDiv.dataset.date = dateStr;
                     if (!dayDiv.title) {
                         dayDiv.title = 'Bridge Day Opportunity';
                     } else {
                         dayDiv.title += ' (Bridge Day)';
                     }
                 }
+                
+                // Add click handler for calendar days
+                dayDiv.addEventListener('click', function() {
+                    scrollToBridgeOpportunity(dateStr);
+                });
                 
                 grid.appendChild(dayDiv);
             }
@@ -759,6 +780,18 @@
                     <div class="ratio-numerator">${opportunity.vacationDays}</div>
                     <div class="ratio-denominator">${opportunity.totalDays}</div>
                 `;
+                
+                // Add hover handlers for highlighting
+                item.addEventListener('mouseenter', function() {
+                    highlightBridgeDays(opportunity.startDate, opportunity.endDate, true);
+                });
+                
+                item.addEventListener('mouseleave', function() {
+                    highlightBridgeDays(opportunity.startDate, opportunity.endDate, false);
+                });
+                
+                // Add unique ID for scrolling
+                item.id = `bridge-opportunity-${opportunity.startDate}-${opportunity.endDate}`;
                 
                 item.appendChild(description);
                 item.appendChild(ratio);
@@ -1046,6 +1079,63 @@
         
         function formatDate(date) {
             return date.toISOString().split('T')[0];
+        }
+        
+        function highlightBridgeDays(startDate, endDate, highlight) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            
+            // Iterate through all days in the range
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                const dateStr = d.toISOString().split('T')[0];
+                const dayElements = document.querySelectorAll(`.day[data-date="${dateStr}"]`);
+                
+                dayElements.forEach(dayEl => {
+                    if (highlight) {
+                        dayEl.classList.add('highlighted');
+                    } else {
+                        dayEl.classList.remove('highlighted');
+                    }
+                });
+            }
+        }
+        
+        function scrollToBridgeOpportunity(clickedDate) {
+            // Find bridge opportunities that contain this date
+            const efficiencyItems = document.querySelectorAll('.efficiency-item');
+            
+            for (let item of efficiencyItems) {
+                const id = item.id;
+                if (!id.startsWith('bridge-opportunity-')) continue;
+                
+                // Extract start and end dates from ID
+                const idParts = id.replace('bridge-opportunity-', '').split('-');
+                if (idParts.length >= 6) {
+                    const startDate = `${idParts[0]}-${idParts[1]}-${idParts[2]}`;
+                    const endDate = `${idParts[3]}-${idParts[4]}-${idParts[5]}`;
+                    
+                    const start = new Date(startDate);
+                    const end = new Date(endDate);
+                    const clicked = new Date(clickedDate);
+                    
+                    if (clicked >= start && clicked <= end) {
+                        // Scroll to this opportunity
+                        item.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'center',
+                            inline: 'nearest'
+                        });
+                        
+                        // Briefly highlight the opportunity
+                        item.style.background = '#fff3cd';
+                        setTimeout(() => {
+                            item.style.background = '';
+                        }, 1000);
+                        
+                        break;
+                    }
+                }
+            }
         }
     </script>
 </body>
