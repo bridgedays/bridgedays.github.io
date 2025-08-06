@@ -157,6 +157,14 @@
             font-weight: bold;
         }
         
+        .day.holiday-highlighted {
+            background: #28a745 !important;
+            border: 2px solid #1e7e34;
+            box-shadow: 0 0 5px rgba(40, 167, 69, 0.5);
+            color: white;
+            font-weight: bold;
+        }
+        
         .day.selected {
             background: #007bff;
             color: white;
@@ -1098,7 +1106,7 @@
                 // Remove all highlight classes
                 const allDayElements = document.querySelectorAll('.day');
                 allDayElements.forEach(dayEl => {
-                    dayEl.classList.remove('highlighted', 'range-highlighted', 'vacation-highlighted');
+                    dayEl.classList.remove('highlighted', 'range-highlighted', 'vacation-highlighted', 'holiday-highlighted');
                 });
                 return;
             }
@@ -1141,7 +1149,12 @@
                 
                 // Check if this day falls within the vacation days range
                 if (dayDate >= start && dayDate <= end) {
-                    dayEl.classList.add('vacation-highlighted');
+                    // Check if this day is also a holiday
+                    if (holidayDates.has(dateStr)) {
+                        dayEl.classList.add('holiday-highlighted');
+                    } else {
+                        dayEl.classList.add('vacation-highlighted');
+                    }
                 }
                 // Check if this day falls within the extended range
                 else if (dayDate >= extendedStart && dayDate <= extendedEnd) {
