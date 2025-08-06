@@ -978,10 +978,16 @@
             weekGroup.forEach(week => {
                 allHolidays.push(...week.holidays.map(h => h.name));
             });
-            const holidayNames = [...new Set(allHolidays)].join(' + ');
+            const uniqueHolidays = [...new Set(allHolidays)];
+            let holidayNames;
+            if (uniqueHolidays.length === 1) {
+                holidayNames = uniqueHolidays[0];
+            } else {
+                holidayNames = `${uniqueHolidays[0]} through to ${uniqueHolidays[uniqueHolidays.length - 1]}`;
+            }
             
             return {
-                name: `${holidayNames} Bridge (${formatDateRange(startDate, endDate)})`,
+                name: `${holidayNames} (${formatDateRange(startDate, endDate)})`,
                 startDate: formatDate(startDate),
                 endDate: formatDate(endDate),
                 vacationDays: vacationDays.length,
