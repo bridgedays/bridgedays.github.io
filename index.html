@@ -171,7 +171,6 @@
         }
         
         .efficiency-list {
-            margin-top: 15px;
             flex: 1;
             overflow-y: auto;
             border: 1px solid #ddd;
@@ -269,9 +268,20 @@
             height: 20px;
             border: 1px solid #ccc;
         }
+        
+        .signature {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 11px;
+            color: #666;
+            font-style: italic;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
+        <div class="signature">✨ Vibe Coded with Claude</div>
         <div class="controls">
             <div class="control-group">
                 <label>Bridge Days Calculator</label>
@@ -356,7 +366,6 @@
         <div id="month-view" class="month-view"></div>
         
         <div id="efficiency-list" class="efficiency-list" style="display: none;">
-            <h3>Bridge Day Opportunities</h3>
             <div id="efficiency-items" class="efficiency-items"></div>
         </div>
 
