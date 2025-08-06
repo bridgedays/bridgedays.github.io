@@ -186,12 +186,19 @@
         
         .section-header {
             width: 100%;
-            font-weight: bold;
-            font-size: 16px;
-            color: #333;
+            text-align: left;
+            border-bottom: 1px solid #007bff;
+            line-height: 0.1em;
             margin: 15px 0 10px 0;
-            padding-bottom: 5px;
-            border-bottom: 2px solid #007bff;
+            padding-left: 20px;
+        }
+        
+        .section-header span {
+            background: white;
+            padding: 0 0.3em;
+            font-weight: bold;
+            font-size: 14px;
+            color: #007bff;
         }
         
         .section-header:first-child {
@@ -975,7 +982,7 @@
             if (upcomingOpportunities.length > 0) {
                 const upcomingHeader = document.createElement('div');
                 upcomingHeader.className = 'section-header';
-                upcomingHeader.textContent = 'Upcoming Opportunities';
+                upcomingHeader.innerHTML = '<span>Upcoming Opportunities</span>';
                 efficiencyItems.appendChild(upcomingHeader);
                 
                 upcomingOpportunities.forEach(opportunity => {
@@ -988,7 +995,7 @@
             if (pastOpportunities.length > 0) {
                 const pastHeader = document.createElement('div');
                 pastHeader.className = 'section-header';
-                pastHeader.textContent = 'Past Opportunities';
+                pastHeader.innerHTML = '<span>Past Opportunities</span>';
                 efficiencyItems.appendChild(pastHeader);
                 
                 pastOpportunities.forEach(opportunity => {
