@@ -161,9 +161,14 @@
             padding: 10px;
             border-radius: 5px;
             display: flex;
-            flex-direction: column;
             min-width: 200px;
             flex: 0 0 auto;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .efficiency-description {
+            flex: 1;
         }
         
         .efficiency-good {
@@ -176,12 +181,24 @@
             border-left: 4px solid #17a2b8;
         }
         
-        .efficiency-score {
+        .efficiency-ratio {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             font-weight: bold;
             color: #007bff;
-            font-size: 18px;
-            margin-top: 5px;
-            text-align: center;
+            font-size: 20px;
+            line-height: 1;
+            min-width: 40px;
+        }
+        
+        .ratio-numerator {
+            padding: 2px 6px;
+            border-bottom: 2px solid #007bff;
+        }
+        
+        .ratio-denominator {
+            padding: 2px 6px;
         }
         
         .loading {
@@ -729,18 +746,22 @@
                 }
                 
                 const description = document.createElement('div');
+                description.className = 'efficiency-description';
                 description.innerHTML = `
                     <strong>${opportunity.name}</strong><br>
                     ${opportunity.startDate} to ${opportunity.endDate}<br>
                     <small>Take ${opportunity.vacationDays} vacation days, get ${opportunity.totalDays} days off</small>
                 `;
                 
-                const efficiency = document.createElement('div');
-                efficiency.className = 'efficiency-score';
-                efficiency.textContent = `${opportunity.efficiency.toFixed(1)}x efficiency`;
+                const ratio = document.createElement('div');
+                ratio.className = 'efficiency-ratio';
+                ratio.innerHTML = `
+                    <div class="ratio-numerator">${opportunity.vacationDays}</div>
+                    <div class="ratio-denominator">${opportunity.totalDays}</div>
+                `;
                 
                 item.appendChild(description);
-                item.appendChild(efficiency);
+                item.appendChild(ratio);
                 efficiencyItems.appendChild(item);
             });
             
@@ -749,18 +770,23 @@
         
         function findBridgeOpportunities() {
             const opportunities = [];
-            const year = parseInt(document.getElementById('year').value);
             
-            // Look for holidays that fall on workdays
-            const workdayHolidays = holidays.filter(holiday => {
+            // Group holidays by week
+            const holidaysByWeek = new Map();
+            
+            holidays.forEach(holiday => {
                 const holidayDate = holiday.startDate || holiday.date;
-                if (!holidayDate) return false;
+                if (!holidayDate) return;
+                
                 const date = new Date(holidayDate);
-                return workdays.includes(date.getDay());
-            });
-            
-            workdayHolidays.forEach(holiday => {
-                const holidayDate = new Date(holiday.startDate || holiday.date);
+                // Get Monday of the week containing this holiday
+                const monday = new Date(date);
+                monday.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+                const weekKey = monday.toISOString().split('T')[0];
+                
+                if (!holidaysByWeek.has(weekKey)) {
+                    holidaysByWeek.set(weekKey, []);
+                }
                 
                 // Extract holiday name
                 let holidayName = 'Holiday';
@@ -772,9 +798,47 @@
                     holidayName = holiday.name;
                 }
                 
-                // Look for bridge opportunities around this holiday
-                const bridges = findBridgesAroundDate(holidayDate, holidayName);
-                opportunities.push(...bridges);
+                holidaysByWeek.get(weekKey).push({
+                    date: new Date(holidayDate),
+                    name: holidayName
+                });
+            });
+            
+            // Process each week with holidays
+            holidaysByWeek.forEach((weekHolidays, weekStart) => {
+                const mondayDate = new Date(weekStart);
+                
+                // Find all consecutive blocks of workdays in this week
+                const workdayBlocks = findConsecutiveWorkdayBlocks(mondayDate);
+                
+                workdayBlocks.forEach(block => {
+                    // Calculate efficiency for taking this block off
+                    const blockStart = block.start;
+                    const blockEnd = block.end;
+                    
+                    // Count vacation days needed (workdays in the block)
+                    const vacationDays = block.days.length;
+                    
+                    // Calculate total days off (including weekends and holidays in the period)
+                    const totalDays = calculateTotalDaysOff(blockStart, blockEnd, weekHolidays);
+                    
+                    if (vacationDays > 0 && totalDays > vacationDays) {
+                        const efficiency = totalDays / vacationDays;
+                        
+                        // Create opportunity name
+                        const holidayNames = weekHolidays.map(h => h.name).join(' + ');
+                        const name = `${holidayNames} Bridge (${getDayNames(block.days)})`;
+                        
+                        opportunities.push({
+                            name: name,
+                            startDate: formatDate(blockStart),
+                            endDate: formatDate(blockEnd),
+                            vacationDays: vacationDays,
+                            totalDays: totalDays,
+                            efficiency: efficiency
+                        });
+                    }
+                });
             });
             
             // Remove duplicates and sort by efficiency
@@ -783,8 +847,95 @@
             );
             
             return uniqueOpportunities
-                .filter(opp => opp.efficiency > 1.5) // Only show opportunities with good efficiency
+                .filter(opp => opp.efficiency > 1.2) // Only show opportunities with good efficiency
                 .sort((a, b) => b.efficiency - a.efficiency);
+        }
+        
+        function findConsecutiveWorkdayBlocks(mondayDate) {
+            const blocks = [];
+            const week = [];
+            
+            // Generate the 7 days of the week starting from Monday
+            for (let i = 0; i < 7; i++) {
+                const day = new Date(mondayDate);
+                day.setDate(mondayDate.getDate() + i);
+                week.push({
+                    date: day,
+                    isWorkday: workdays.includes(day.getDay())
+                });
+            }
+            
+            // Find consecutive sequences of workdays
+            let currentBlock = [];
+            
+            week.forEach((day, index) => {
+                if (day.isWorkday) {
+                    currentBlock.push(day);
+                } else {
+                    if (currentBlock.length > 0) {
+                        blocks.push({
+                            start: new Date(currentBlock[0].date),
+                            end: new Date(currentBlock[currentBlock.length - 1].date),
+                            days: [...currentBlock]
+                        });
+                        currentBlock = [];
+                    }
+                }
+            });
+            
+            // Don't forget the last block if it extends to the end of the week
+            if (currentBlock.length > 0) {
+                blocks.push({
+                    start: new Date(currentBlock[0].date),
+                    end: new Date(currentBlock[currentBlock.length - 1].date),
+                    days: [...currentBlock]
+                });
+            }
+            
+            return blocks;
+        }
+        
+        function calculateTotalDaysOff(startDate, endDate, weekHolidays) {
+            let totalDays = 0;
+            const current = new Date(startDate);
+            
+            while (current <= endDate) {
+                totalDays++;
+                current.setDate(current.getDate() + 1);
+            }
+            
+            // Add adjacent weekends and holidays
+            const extendedStart = new Date(startDate);
+            const extendedEnd = new Date(endDate);
+            
+            // Extend backwards through non-workdays
+            extendedStart.setDate(extendedStart.getDate() - 1);
+            while (!workdays.includes(extendedStart.getDay()) || isHoliday(extendedStart)) {
+                totalDays++;
+                extendedStart.setDate(extendedStart.getDate() - 1);
+            }
+            
+            // Extend forwards through non-workdays
+            extendedEnd.setDate(extendedEnd.getDate() + 1);
+            while (!workdays.includes(extendedEnd.getDay()) || isHoliday(extendedEnd)) {
+                totalDays++;
+                extendedEnd.setDate(extendedEnd.getDate() + 1);
+            }
+            
+            return totalDays;
+        }
+        
+        function isHoliday(date) {
+            const dateStr = date.toISOString().split('T')[0];
+            return holidays.some(h => {
+                const holidayDate = h.startDate || h.date;
+                return holidayDate === dateStr;
+            });
+        }
+        
+        function getDayNames(days) {
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            return days.map(day => dayNames[day.date.getDay()]).join('-');
         }
         
         function findBridgesAroundDate(holidayDate, holidayName) {
