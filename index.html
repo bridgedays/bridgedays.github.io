@@ -628,10 +628,6 @@
                 const nextYearHolidays = await fetchHolidays(country, year + 1, 1, subdivision);
                 holidays = holidays.concat(nextYearHolidays);
                 
-                // Get holidays for January of the year after that
-                const futureYearHolidays = await fetchHolidays(country, year + 2, 1, subdivision);
-                holidays = holidays.concat(futureYearHolidays);
-                
                 document.getElementById('loading').style.display = 'none';
                 renderCalendarAndEfficiency();
                 
