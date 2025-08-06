@@ -837,8 +837,8 @@
                 monthsToShow.push({year: year, month: month});
             }
             
-            // January of year after next
-            monthsToShow.push({year: year + 2, month: 0});
+            // January of next year
+            monthsToShow.push({year: year + 1, month: 0});
             
             const monthView = document.getElementById('month-view');
             monthView.innerHTML = '';
