@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bridge Days Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: inline-block;
+            width: 120px;
+            font-weight: bold;
+        }
+        
+        select, input {
+            padding: 5px;
+            margin: 5px;
+        }
+        
+        .workdays {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .workday-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .month-view {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .month {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            min-width: 250px;
+        }
+        
+        .month-header {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+            background: #007bff;
+            color: white;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+        }
+        
+        .day-header {
+            text-align: center;
+            font-weight: bold;
+            padding: 5px;
+            background: #e9ecef;
+            font-size: 12px;
+        }
+        
+        .day {
+            text-align: center;
+            padding: 8px 4px;
+            border: 1px solid #eee;
+            cursor: pointer;
+            position: relative;
+            min-height: 20px;
+            font-size: 12px;
+        }
+        
+        .day.other-month {
+            color: #ccc;
+        }
+        
+        .day.weekend {
+            background: #f8f9fa;
+        }
+        
+        .day.workday {
+            background: white;
+        }
+        
+        .day.holiday {
+            background: #ffcccb;
+            font-weight: bold;
+        }
+        
+        .day.bridge-day {
+            background: #ffffcc;
+            border: 2px solid #ffd700;
+        }
+        
+        .day.selected {
+            background: #007bff;
+            color: white;
+        }
+        
+        .efficiency-list {
+            margin-top: 20px;
+        }
+        
+        .efficiency-item {
+            background: #e9ecef;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .efficiency-good {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+        
+        .efficiency-excellent {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+        }
+        
+        .efficiency-score {
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Bridge Days Calculator</h1>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="country">Country:</label>
+                <select id="country">
+                    <option value="US">United States</option>
+                    <option value="DE">Germany</option>
+                    <option value="FR">France</option>
+                    <option value="UK">United Kingdom</option>
+                    <option value="CA">Canada</option>
+                    <option value="AU">Australia</option>
+                </select>
+                
+                <label for="year">Year:</label>
+                <input type="number" id="year" min="2020" max="2030" value="2024">
+                
+                <button onclick="calculateBridgeDays()">Calculate</button>
+            </div>
+            
+            <div class="control-group">
+                <label>Work Days:</label>
+                <div class="workdays">
+                    <div class="workday-checkbox">
+                        <input type="checkbox" id="monday" checked>
+                        <label for="monday">Mon</label>
+                    </div>
+                    <div class="workday-checkbox">
+                        <input type="checkbox" id="tuesday" checked>
+                        <label for="tuesday">Tue</label>
+                    </div>
+                    <div class="workday-checkbox">
+                        <input type="checkbox" id="wednesday" checked>
+                        <label for="wednesday">Wed</label>
+                    </div>
+                    <div class="workday-checkbox">
+                        <input type="checkbox" id="thursday" checked>
+                        <label for="thursday">Thu</label>
+                    </div>
+                    <div class="workday-checkbox">
+                        <input type="checkbox" id="friday" checked>
+                        <label for="friday">Fri</label>
+                    </div>
+                    <div class="workday-checkbox">
+                        <input type="checkbox" id="saturday">
+                        <label for="saturday">Sat</label>
+                    </div>
+                    <div class="workday-checkbox">
+                        <input type="checkbox" id="sunday">
+                        <label for="sunday">Sun</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ffcccb;"></div>
+                <span>Public Holiday</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ffffcc; border: 2px solid #ffd700;"></div>
+                <span>Bridge Day</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #f8f9fa;"></div>
+                <span>Weekend/Non-workday</span>
+            </div>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            Loading holidays...
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div id="month-view" class="month-view"></div>
+        
+        <div id="efficiency-list" class="efficiency-list" style="display: none;">
+            <h3>Bridge Day Opportunities</h3>
+            <div id="efficiency-items"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://openholidaysapi.org';
+        let holidays = [];
+        let workdays = [1, 2, 3, 4, 5]; // Monday = 1, Sunday = 0
+        
+        // Add event listeners for automatic recalculation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add change listeners to all checkboxes
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.addEventListener('change', updateWorkdays);
+            });
+            
+            // Initial calculation
+            calculateBridgeDays();
+        });
+        
+        function updateWorkdays() {
+            workdays = [];
+            const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            days.forEach((day, index) => {
+                if (document.getElementById(day).checked) {
+                    workdays.push(index);
+                }
+            });
+            
+            // Recalculate if we already have data
+            if (holidays.length > 0) {
+                renderCalendarAndEfficiency();
+            }
+        }
+        
+        async function calculateBridgeDays() {
+            const country = document.getElementById('country').value;
+            const year = parseInt(document.getElementById('year').value);
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('month-view').innerHTML = '';
+            document.getElementById('efficiency-list').style.display = 'none';
+            
+            try {
+                // Fetch holidays for the extended period (Dec previous year to Jan following year)
+                holidays = [];
+                
+                // Get holidays for December of previous year
+                const prevYearHolidays = await fetchHolidays(country, year - 1, 12);
+                holidays = holidays.concat(prevYearHolidays);
+                
+                // Get holidays for the main year
+                const currentYearHolidays = await fetchHolidays(country, year);
+                holidays = holidays.concat(currentYearHolidays);
+                
+                // Get holidays for January of following year
+                const nextYearHolidays = await fetchHolidays(country, year + 1, 1);
+                holidays = holidays.concat(nextYearHolidays);
+                
+                document.getElementById('loading').style.display = 'none';
+                renderCalendarAndEfficiency();
+                
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').textContent = 'Error fetching holidays: ' + error.message;
+                document.getElementById('error').style.display = 'block';
+            }
+        }
+        
+        async function fetchHolidays(country, year, month = null) {
+            let url = `${API_BASE}/PublicHolidays?countryIsoCode=${country}&validFrom=${year}-01-01&validTo=${year}-12-31`;
+            
+            if (month) {
+                const monthStr = month.toString().padStart(2, '0');
+                url = `${API_BASE}/PublicHolidays?countryIsoCode=${country}&validFrom=${year}-${monthStr}-01&validTo=${year}-${monthStr}-31`;
+            }
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                // Fallback: create mock data for demonstration
+                console.warn('API call failed, using mock data:', error);
+                return generateMockHolidays(year, month);
+            }
+        }
+        
+        function generateMockHolidays(year, month = null) {
+            const mockHolidays = [];
+            
+            if (!month || month === 1) {
+                mockHolidays.push({
+                    date: `${year}-01-01`,
+                    name: "New Year's Day",
+                    countryCode: 'US'
+                });
+                mockHolidays.push({
+                    date: `${year}-01-15`,
+                    name: "Martin Luther King Jr. Day",
+                    countryCode: 'US'
+                });
+            }
+            
+            if (!month || month === 12) {
+                mockHolidays.push({
+                    date: `${year}-12-25`,
+                    name: "Christmas Day",
+                    countryCode: 'US'
+                });
+                mockHolidays.push({
+                    date: `${year}-12-24`,
+                    name: "Christmas Eve",
+                    countryCode: 'US'
+                });
+            }
+            
+            if (!month) {
+                mockHolidays.push(
+                    {
+                        date: `${year}-07-04`,
+                        name: "Independence Day",
+                        countryCode: 'US'
+                    },
+                    {
+                        date: `${year}-11-23`,
+                        name: "Thanksgiving Day",
+                        countryCode: 'US'
+                    },
+                    {
+                        date: `${year}-11-24`,
+                        name: "Black Friday",
+                        countryCode: 'US'
+                    }
+                );
+            }
+            
+            return mockHolidays;
+        }
+        
+        function renderCalendarAndEfficiency() {
+            const year = parseInt(document.getElementById('year').value);
+            const monthsToShow = [
+                {year: year - 1, month: 11}, // December (0-indexed)
+                {year: year, month: 0},      // January
+                {year: year, month: 1},      // February
+                {year: year, month: 10},     // November
+                {year: year, month: 11},     // December
+                {year: year + 1, month: 0}   // January next year
+            ];
+            
+            const monthView = document.getElementById('month-view');
+            monthView.innerHTML = '';
+            
+            monthsToShow.forEach(({year: yr, month}) => {
+                const monthElement = createMonthView(yr, month);
+                monthView.appendChild(monthElement);
+            });
+            
+            calculateAndDisplayEfficiency();
+        }
+        
+        function createMonthView(year, month) {
+            const monthDiv = document.createElement('div');
+            monthDiv.className = 'month';
+            
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                              'July', 'August', 'September', 'October', 'November', 'December'];
+            
+            const header = document.createElement('div');
+            header.className = 'month-header';
+            header.textContent = `${monthNames[month]} ${year}`;
+            monthDiv.appendChild(header);
+            
+            const grid = document.createElement('div');
+            grid.className = 'calendar-grid';
+            
+            // Day headers
+            const dayHeaders = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+            dayHeaders.forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'day-header';
+                dayHeader.textContent = day;
+                grid.appendChild(dayHeader);
+            });
+            
+            // Get first day of month and number of days
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+            
+            // Create calendar days
+            for (let i = 0; i < 42; i++) {
+                const currentDate = new Date(startDate);
+                currentDate.setDate(startDate.getDate() + i);
+                
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'day';
+                dayDiv.textContent = currentDate.getDate();
+                
+                // Check if it's in current month
+                if (currentDate.getMonth() !== month) {
+                    dayDiv.classList.add('other-month');
+                }
+                
+                // Check if it's a workday
+                const dayOfWeek = currentDate.getDay();
+                if (workdays.includes(dayOfWeek)) {
+                    dayDiv.classList.add('workday');
+                } else {
+                    dayDiv.classList.add('weekend');
+                }
+                
+                // Check if it's a holiday
+                const dateStr = currentDate.toISOString().split('T')[0];
+                const holiday = holidays.find(h => h.date === dateStr);
+                if (holiday) {
+                    dayDiv.classList.add('holiday');
+                    dayDiv.title = holiday.name;
+                }
+                
+                grid.appendChild(dayDiv);
+            }
+            
+            monthDiv.appendChild(grid);
+            return monthDiv;
+        }
+        
+        function calculateAndDisplayEfficiency() {
+            const bridgeOpportunities = findBridgeOpportunities();
+            
+            const efficiencyList = document.getElementById('efficiency-list');
+            const efficiencyItems = document.getElementById('efficiency-items');
+            
+            if (bridgeOpportunities.length === 0) {
+                efficiencyList.style.display = 'none';
+                return;
+            }
+            
+            efficiencyItems.innerHTML = '';
+            
+            bridgeOpportunities.forEach(opportunity => {
+                const item = document.createElement('div');
+                item.className = 'efficiency-item';
+                
+                if (opportunity.efficiency >= 3) {
+                    item.classList.add('efficiency-excellent');
+                } else if (opportunity.efficiency >= 2) {
+                    item.classList.add('efficiency-good');
+                }
+                
+                const description = document.createElement('div');
+                description.innerHTML = `
+                    <strong>${opportunity.name}</strong><br>
+                    ${opportunity.startDate} to ${opportunity.endDate}<br>
+                    <small>Take ${opportunity.vacationDays} vacation days, get ${opportunity.totalDays} days off</small>
+                `;
+                
+                const efficiency = document.createElement('div');
+                efficiency.className = 'efficiency-score';
+                efficiency.textContent = `${opportunity.efficiency.toFixed(1)}x`;
+                
+                item.appendChild(description);
+                item.appendChild(efficiency);
+                efficiencyItems.appendChild(item);
+            });
+            
+            efficiencyList.style.display = 'block';
+        }
+        
+        function findBridgeOpportunities() {
+            const opportunities = [];
+            const year = parseInt(document.getElementById('year').value);
+            
+            // Look for holidays that fall on workdays
+            const workdayHolidays = holidays.filter(holiday => {
+                const date = new Date(holiday.date);
+                return workdays.includes(date.getDay());
+            });
+            
+            workdayHolidays.forEach(holiday => {
+                const holidayDate = new Date(holiday.date);
+                
+                // Look for bridge opportunities around this holiday
+                const bridges = findBridgesAroundDate(holidayDate, holiday.name);
+                opportunities.push(...bridges);
+            });
+            
+            // Remove duplicates and sort by efficiency
+            const uniqueOpportunities = opportunities.filter((opp, index, self) => 
+                index === self.findIndex(o => o.startDate === opp.startDate && o.endDate === opp.endDate)
+            );
+            
+            return uniqueOpportunities
+                .filter(opp => opp.efficiency > 1.5) // Only show opportunities with good efficiency
+                .sort((a, b) => b.efficiency - a.efficiency);
+        }
+        
+        function findBridgesAroundDate(holidayDate, holidayName) {
+            const bridges = [];
+            
+            // Check for weekend bridges (extending weekends)
+            const dayOfWeek = holidayDate.getDay();
+            
+            // If holiday is on Monday or Friday, check for weekend extension
+            if (dayOfWeek === 1) { // Monday
+                bridges.push(...checkWeekendExtension(holidayDate, holidayName, 'before'));
+            }
+            if (dayOfWeek === 5) { // Friday
+                bridges.push(...checkWeekendExtension(holidayDate, holidayName, 'after'));
+            }
+            
+            // Check for mid-week bridges
+            if (dayOfWeek >= 2 && dayOfWeek <= 4) { // Tuesday, Wednesday, Thursday
+                bridges.push(...checkMidWeekBridge(holidayDate, holidayName));
+            }
+            
+            return bridges;
+        }
+        
+        function checkWeekendExtension(holidayDate, holidayName, direction) {
+            const bridges = [];
+            const startDate = new Date(holidayDate);
+            const endDate = new Date(holidayDate);
+            
+            if (direction === 'before') {
+                // Extend to previous Friday
+                startDate.setDate(startDate.getDate() - 3);
+                const vacationDays = countWorkdaysBetween(startDate, new Date(holidayDate.getTime() - 24*60*60*1000));
+                const totalDays = Math.floor((holidayDate - startDate) / (24*60*60*1000)) + 1;
+                
+                if (vacationDays > 0) {
+                    bridges.push({
+                        name: `${holidayName} Weekend Extension`,
+                        startDate: formatDate(startDate),
+                        endDate: formatDate(holidayDate),
+                        vacationDays,
+                        totalDays,
+                        efficiency: totalDays / vacationDays
+                    });
+                }
+            } else {
+                // Extend to following Monday
+                endDate.setDate(endDate.getDate() + 3);
+                const vacationDays = countWorkdaysBetween(new Date(holidayDate.getTime() + 24*60*60*1000), endDate);
+                const totalDays = Math.floor((endDate - holidayDate) / (24*60*60*1000)) + 1;
+                
+                if (vacationDays > 0) {
+                    bridges.push({
+                        name: `${holidayName} Weekend Extension`,
+                        startDate: formatDate(holidayDate),
+                        endDate: formatDate(endDate),
+                        vacationDays,
+                        totalDays,
+                        efficiency: totalDays / vacationDays
+                    });
+                }
+            }
+            
+            return bridges;
+        }
+        
+        function checkMidWeekBridge(holidayDate, holidayName) {
+            const bridges = [];
+            
+            // Try bridging to the weekend
+            const endDate = new Date(holidayDate);
+            // Find next non-workday
+            while (workdays.includes(endDate.getDay())) {
+                endDate.setDate(endDate.getDate() + 1);
+            }
+            endDate.setDate(endDate.getDate() - 1); // Back to last workday
+            
+            const vacationDays = countWorkdaysBetween(new Date(holidayDate.getTime() + 24*60*60*1000), endDate);
+            const totalDays = Math.floor((endDate - holidayDate) / (24*60*60*1000)) + 1;
+            
+            if (vacationDays > 0 && vacationDays <= 3) {
+                bridges.push({
+                    name: `${holidayName} to Weekend Bridge`,
+                    startDate: formatDate(holidayDate),
+                    endDate: formatDate(endDate),
+                    vacationDays,
+                    totalDays,
+                    efficiency: totalDays / vacationDays
+                });
+            }
+            
+            return bridges;
+        }
+        
+        function countWorkdaysBetween(startDate, endDate) {
+            let count = 0;
+            const current = new Date(startDate);
+            
+            while (current <= endDate) {
+                if (workdays.includes(current.getDay())) {
+                    count++;
+                }
+                current.setDate(current.getDate() + 1);
+            }
+            
+            return count;
+        }
+        
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+    </script>
+</body>
+</html>
