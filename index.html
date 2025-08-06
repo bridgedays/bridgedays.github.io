@@ -203,6 +203,11 @@
                     <option value="">Loading countries...</option>
                 </select>
                 
+                <label for="subdivision">Region:</label>
+                <select id="subdivision" style="display: none;">
+                    <option value="">All regions</option>
+                </select>
+                
                 <label for="year">Year:</label>
                 <input type="number" id="year" min="2020" max="2030">
                 
@@ -289,6 +294,9 @@
                 cb.addEventListener('change', updateWorkdays);
             });
             
+            // Add change listener to country dropdown
+            document.getElementById('country').addEventListener('change', onCountryChange);
+            
             // Load countries and initial calculation
             loadCountries()
                 .then(() => calculateBridgeDays())
@@ -316,7 +324,14 @@
         
         async function calculateBridgeDays() {
             const country = document.getElementById('country').value;
+            const subdivision = document.getElementById('subdivision').value;
             const year = parseInt(document.getElementById('year').value);
+            
+            if (!country) {
+                document.getElementById('error').textContent = 'Please select a country';
+                document.getElementById('error').style.display = 'block';
+                return;
+            }
             
             document.getElementById('loading').style.display = 'block';
             document.getElementById('error').style.display = 'none';
@@ -328,15 +343,15 @@
                 holidays = [];
                 
                 // Get holidays for December of previous year
-                const prevYearHolidays = await fetchHolidays(country, year - 1, 12);
+                const prevYearHolidays = await fetchHolidays(country, year - 1, 12, subdivision);
                 holidays = holidays.concat(prevYearHolidays);
                 
                 // Get holidays for the main year
-                const currentYearHolidays = await fetchHolidays(country, year);
+                const currentYearHolidays = await fetchHolidays(country, year, null, subdivision);
                 holidays = holidays.concat(currentYearHolidays);
                 
                 // Get holidays for January of following year
-                const nextYearHolidays = await fetchHolidays(country, year + 1, 1);
+                const nextYearHolidays = await fetchHolidays(country, year + 1, 1, subdivision);
                 holidays = holidays.concat(nextYearHolidays);
                 
                 document.getElementById('loading').style.display = 'none';
@@ -355,6 +370,7 @@
                 throw new Error(`HTTP ${response.status}`);
             }
             const countries = await response.json();
+            console.log('Loaded countries:', countries); // Debug log
             
             const countrySelect = document.getElementById('country');
             countrySelect.innerHTML = '';
@@ -362,17 +378,74 @@
             countries.forEach(country => {
                 const option = document.createElement('option');
                 option.value = country.isoCode;
-                option.textContent = country.name;
+                
+                // Extract English name from localized names array
+                const englishName = country.name.find(n => n.language === 'EN');
+                const defaultName = country.name[0]; // Fallback to first available name
+                option.textContent = englishName ? englishName.text : (defaultName ? defaultName.text : country.isoCode);
+                
                 countrySelect.appendChild(option);
             });
             
             // Set default to US if available
             if (countries.find(c => c.isoCode === 'US')) {
                 countrySelect.value = 'US';
+                onCountryChange(); // Load subdivisions for default country
             }
         }
         
-        async function fetchHolidays(country, year, month = null) {
+        async function onCountryChange() {
+            const countryCode = document.getElementById('country').value;
+            const subdivisionSelect = document.getElementById('subdivision');
+            
+            if (!countryCode) {
+                subdivisionSelect.style.display = 'none';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/Subdivisions?countryIsoCode=${countryCode}`);
+                if (!response.ok) {
+                    subdivisionSelect.style.display = 'none';
+                    return;
+                }
+                
+                const subdivisions = await response.json();
+                console.log('Loaded subdivisions:', subdivisions); // Debug log
+                
+                if (subdivisions.length === 0) {
+                    subdivisionSelect.style.display = 'none';
+                    return;
+                }
+                
+                subdivisionSelect.innerHTML = '<option value="">All regions</option>';
+                
+                subdivisions.forEach(subdivision => {
+                    const option = document.createElement('option');
+                    option.value = subdivision.code;
+                    
+                    // Extract English name from localized names array
+                    const englishName = subdivision.name.find(n => n.language === 'EN');
+                    const defaultName = subdivision.name[0];
+                    option.textContent = englishName ? englishName.text : (defaultName ? defaultName.text : subdivision.shortName);
+                    
+                    subdivisionSelect.appendChild(option);
+                });
+                
+                subdivisionSelect.style.display = 'inline-block';
+                
+            } catch (error) {
+                console.warn('Could not load subdivisions:', error);
+                subdivisionSelect.style.display = 'none';
+            }
+            
+            // Recalculate if we already have data
+            if (holidays.length > 0) {
+                calculateBridgeDays();
+            }
+        }
+        
+        async function fetchHolidays(country, year, month = null, subdivision = null) {
             let url;
             
             if (month) {
@@ -381,6 +454,10 @@
                 url = `${API_BASE}/PublicHolidays?countryIsoCode=${country}&validFrom=${year}-${monthStr}-01&validTo=${year}-${monthStr}-${lastDay}`;
             } else {
                 url = `${API_BASE}/PublicHolidays?countryIsoCode=${country}&validFrom=${year}-01-01&validTo=${year}-12-31`;
+            }
+            
+            if (subdivision) {
+                url += `&subdivisionCode=${subdivision}`;
             }
             
             const response = await fetch(url);
@@ -469,12 +546,23 @@
                 const dateStr = currentDate.toISOString().split('T')[0];
                 const holiday = holidays.find(h => {
                     // Handle different possible date formats from API
-                    const holidayDate = h.date || h.startDate;
+                    const holidayDate = h.startDate || h.date;
                     return holidayDate === dateStr;
                 });
                 if (holiday) {
                     dayDiv.classList.add('holiday');
-                    dayDiv.title = holiday.name || holiday.localName || 'Holiday';
+                    
+                    // Extract holiday name from localized names array
+                    let holidayName = 'Holiday';
+                    if (holiday.name && Array.isArray(holiday.name)) {
+                        const englishName = holiday.name.find(n => n.language === 'EN');
+                        const defaultName = holiday.name[0];
+                        holidayName = englishName ? englishName.text : (defaultName ? defaultName.text : 'Holiday');
+                    } else if (holiday.name) {
+                        holidayName = holiday.name;
+                    }
+                    
+                    dayDiv.title = holidayName;
                 }
                 
                 grid.appendChild(dayDiv);
@@ -532,15 +620,27 @@
             
             // Look for holidays that fall on workdays
             const workdayHolidays = holidays.filter(holiday => {
-                const date = new Date(holiday.date);
+                const holidayDate = holiday.startDate || holiday.date;
+                if (!holidayDate) return false;
+                const date = new Date(holidayDate);
                 return workdays.includes(date.getDay());
             });
             
             workdayHolidays.forEach(holiday => {
-                const holidayDate = new Date(holiday.date);
+                const holidayDate = new Date(holiday.startDate || holiday.date);
+                
+                // Extract holiday name
+                let holidayName = 'Holiday';
+                if (holiday.name && Array.isArray(holiday.name)) {
+                    const englishName = holiday.name.find(n => n.language === 'EN');
+                    const defaultName = holiday.name[0];
+                    holidayName = englishName ? englishName.text : (defaultName ? defaultName.text : 'Holiday');
+                } else if (holiday.name) {
+                    holidayName = holiday.name;
+                }
                 
                 // Look for bridge opportunities around this holiday
-                const bridges = findBridgesAroundDate(holidayDate, holiday.name);
+                const bridges = findBridgesAroundDate(holidayDate, holidayName);
                 opportunities.push(...bridges);
             });
             
