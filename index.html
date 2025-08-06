@@ -340,6 +340,14 @@
                     </div>
                 </div>
             </div>
+            
+            <div class="control-group">
+                <label for="weekStartDay">Week starts</label>
+                <select id="weekStartDay">
+                    <option value="1">Monday</option>
+                    <option value="0">Sunday</option>
+                </select>
+            </div>
         </div>
         
         <div class="legend">
@@ -373,6 +381,7 @@
         const API_BASE = 'https://openholidaysapi.org';
         let holidays = [];
         let workdays = [1, 2, 3, 4, 5]; // Monday = 1, Sunday = 0
+        let weekStartDay = 1; // 1 = Monday, 0 = Sunday
         
         // Add event listeners for automatic recalculation
         document.addEventListener('DOMContentLoaded', function() {
@@ -389,6 +398,10 @@
             document.getElementById('country').addEventListener('change', onCountryChange);
             document.getElementById('subdivision').addEventListener('change', calculateBridgeDays);
             document.getElementById('year').addEventListener('change', calculateBridgeDays);
+            document.getElementById('weekStartDay').addEventListener('change', function() {
+                weekStartDay = parseInt(this.value);
+                renderCalendarAndEfficiency();
+            });
             
             // Load countries and initial calculation
             loadCountries()
@@ -691,7 +704,9 @@
             grid.className = 'calendar-grid';
             
             // Day headers
-            const dayHeaders = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+            const dayHeaders = weekStartDay === 1 ? 
+                ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'] : 
+                ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
             dayHeaders.forEach(day => {
                 const dayHeader = document.createElement('div');
                 dayHeader.className = 'day-header';
@@ -703,7 +718,9 @@
             const firstDay = new Date(year, month, 1);
             const lastDay = new Date(year, month + 1, 0);
             const startDate = new Date(firstDay);
-            startDate.setDate(startDate.getDate() - firstDay.getDay());
+            // Adjust for week start day (0 = Sunday, 1 = Monday)
+            const dayOffset = (firstDay.getDay() - weekStartDay + 7) % 7;
+            startDate.setDate(startDate.getDate() - dayOffset);
             
             // Create calendar days
             for (let i = 0; i < 42; i++) {
@@ -1161,8 +1178,12 @@
                     // Check if this day is also a holiday
                     if (holidayDates.has(dateStr)) {
                         dayEl.classList.add('holiday-highlighted');
-                    } else {
+                    } else if (workdays.includes(dayDate.getDay())) {
+                        // Only highlight workdays as vacation days (red)
                         dayEl.classList.add('vacation-highlighted');
+                    } else {
+                        // Weekends within vacation range just get range highlight
+                        dayEl.classList.add('range-highlighted');
                     }
                 }
                 // Check if this day falls within the extended range
