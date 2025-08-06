@@ -768,9 +768,11 @@
                 
                 const description = document.createElement('div');
                 description.className = 'efficiency-description';
+                const startDate = new Date(opportunity.startDate);
+                const endDate = new Date(opportunity.endDate);
                 description.innerHTML = `
                     <strong>${opportunity.name}</strong><br>
-                    ${opportunity.startDate} to ${opportunity.endDate}<br>
+                    ${formatDateRangeForTitle(startDate, endDate)} (${formatDateRange(startDate, endDate)})<br>
                     <small>Take ${opportunity.vacationDays} vacation days, get ${opportunity.totalDays} days off</small>
                 `;
                 
@@ -989,7 +991,7 @@
             }
             
             return {
-                name: `${holidayNames} (${formatDateRangeForTitle(startDate, endDate)})`,
+                name: holidayNames,
                 startDate: formatDate(startDate),
                 endDate: formatDate(endDate),
                 vacationDays: vacationDays.length,
