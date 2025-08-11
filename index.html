@@ -1115,10 +1115,16 @@
             // Add click handler for mobile (permanent selection)
             item.addEventListener('click', function(event) {
                 event.stopPropagation(); // Prevent document click handler
-                // Clear previous selection visual indicator
+                
+                // Clear previous selection visual indicator and calendar highlighting
                 const prevSelected = document.querySelector('.efficiency-item.selected');
                 if (prevSelected) {
                     prevSelected.classList.remove('selected');
+                }
+                
+                // Clear previous opportunity highlighting if one exists
+                if (selectedOpportunity) {
+                    highlightBridgeDays(selectedOpportunity.startDate, selectedOpportunity.endDate, false);
                 }
                 
                 // Set this opportunity as selected
@@ -1127,7 +1133,6 @@
                     selectedOpportunity.endDate === opportunity.endDate) {
                     // Clicking the same opportunity deselects it
                     selectedOpportunity = null;
-                    highlightBridgeDays(opportunity.startDate, opportunity.endDate, false);
                 } else {
                     // Select new opportunity
                     selectedOpportunity = opportunity;
