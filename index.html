@@ -14,6 +14,13 @@
             height: 100vh;
         }
         
+        @media (max-width: 768px) {
+            body {
+                height: auto;
+                min-height: 100vh;
+            }
+        }
+        
         .controls {
             margin-bottom: 15px;
             padding: 10px;
@@ -171,6 +178,17 @@
             color: white;
         }
         
+        .efficiency-item.selected {
+            background: #007bff !important;
+            color: white;
+            border: 2px solid #0056b3;
+            box-shadow: 0 0 8px rgba(0, 123, 255, 0.4);
+        }
+        
+        .efficiency-item.selected .efficiency-ratio {
+            color: white;
+        }
+        
         .efficiency-list {
             flex: 1;
             overflow-y: auto;
@@ -178,6 +196,15 @@
             border-radius: 5px;
             padding: 10px;
             min-height: 0;
+        }
+        
+        @media (max-width: 768px) {
+            .efficiency-list {
+                flex: none;
+                overflow-y: visible;
+                max-height: none;
+                min-height: auto;
+            }
         }
         
         .efficiency-items {
@@ -467,6 +494,7 @@
         let workdays = [1, 2, 3, 4, 5]; // Monday = 1, Sunday = 0
         let weekStartDay = 1; // 1 = Monday, 0 = Sunday
         let calculateTimeout = null; // For debouncing holiday fetches
+        let selectedOpportunity = null; // Track clicked opportunity for mobile
         
         // Date helper functions to avoid timezone bugs
         function dateToString(date) {
@@ -530,6 +558,20 @@
                 return false;
             }
         }
+        
+        // Global click handler to deselect opportunities when clicking outside
+        document.addEventListener('click', function(event) {
+            // Check if click is outside efficiency items
+            if (!event.target.closest('.efficiency-item') && selectedOpportunity) {
+                // Clear selection
+                const prevSelected = document.querySelector('.efficiency-item.selected');
+                if (prevSelected) {
+                    prevSelected.classList.remove('selected');
+                }
+                highlightBridgeDays(selectedOpportunity.startDate, selectedOpportunity.endDate, false);
+                selectedOpportunity = null;
+            }
+        });
         
         // Add event listeners for automatic recalculation
         document.addEventListener('DOMContentLoaded', function() {
@@ -997,6 +1039,8 @@
                 return;
             }
             
+            // Clear selected opportunity when regenerating list
+            selectedOpportunity = null;
             efficiencyItems.innerHTML = '';
             
             // Split opportunities into upcoming and past
@@ -1068,13 +1112,41 @@
                 <div class="ratio-denominator">${opportunity.totalDays}</div>
             `;
             
-            // Add hover handlers for highlighting
+            // Add click handler for mobile (permanent selection)
+            item.addEventListener('click', function(event) {
+                event.stopPropagation(); // Prevent document click handler
+                // Clear previous selection visual indicator
+                const prevSelected = document.querySelector('.efficiency-item.selected');
+                if (prevSelected) {
+                    prevSelected.classList.remove('selected');
+                }
+                
+                // Set this opportunity as selected
+                if (selectedOpportunity && 
+                    selectedOpportunity.startDate === opportunity.startDate && 
+                    selectedOpportunity.endDate === opportunity.endDate) {
+                    // Clicking the same opportunity deselects it
+                    selectedOpportunity = null;
+                    highlightBridgeDays(opportunity.startDate, opportunity.endDate, false);
+                } else {
+                    // Select new opportunity
+                    selectedOpportunity = opportunity;
+                    item.classList.add('selected');
+                    highlightBridgeDays(opportunity.startDate, opportunity.endDate, true);
+                }
+            });
+            
+            // Add hover handlers for highlighting (only if no opportunity is selected)
             item.addEventListener('mouseenter', function() {
-                highlightBridgeDays(opportunity.startDate, opportunity.endDate, true);
+                if (!selectedOpportunity) {
+                    highlightBridgeDays(opportunity.startDate, opportunity.endDate, true);
+                }
             });
             
             item.addEventListener('mouseleave', function() {
-                highlightBridgeDays(opportunity.startDate, opportunity.endDate, false);
+                if (!selectedOpportunity) {
+                    highlightBridgeDays(opportunity.startDate, opportunity.endDate, false);
+                }
             });
             
             // Add unique ID for scrolling
